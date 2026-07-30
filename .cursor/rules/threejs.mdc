@@ -1,0 +1,25 @@
+---
+description: Three.js and React Three Fiber (R3F) performance, memory disposal, and WebGPU guidelines
+globs: **/*.tsx, **/*.ts
+---
+
+# Three.js & R3F Guidelines for NullVoid.AI
+
+## 1. GPU Memory Disposal & Traversal
+- **Always dispose of geometries, materials, and textures** when components unmount.
+- Use recursive traversal helpers (`lib/three-utils.ts`) when removing 3D subtrees to prevent WebGL context leaks.
+- Avoid instantiating new `THREE.Vector3`, `THREE.Matrix4`, or `THREE.Color` inside `useFrame` render loops. Reuse static instances outside the component or in `useRef`.
+
+## 2. WebGPU & WebGL Fallback
+- Check for WebGPU support using `lib/webgpu-check.ts`.
+- Fall back gracefully to WebGL2 renderer if WebGPU is unavailable or unsupported on the client device.
+
+## 3. DOM & Canvas Isolation
+- Keep `@react-three/fiber` components inside `components/canvas/`.
+- Never mix standard HTML DOM elements inside the R3F `<Canvas>` component directly—use Drei `<Html>` overlay wrapper only when necessary.
+- 2D toolbars, sidebars, and overlays must reside in `components/ui/` positioned with CSS `absolute`/`fixed` over the canvas.
+
+## 4. Asset Optimization
+- Store `.glb` / `.gltf` 3D models in `public/models/`.
+- Ensure GLB models are Draco or Meshopt compressed for web streaming.
+- Use `useGLTF.preload` to warm up asset loading before canvas mounting.

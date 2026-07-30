@@ -1,0 +1,32 @@
+{
+  "configPath": "C:\\Users\\iambr\\OneDrive\\Desktop\\NULLVOID.AI\\.trigger\\tmp\\build-OvViNq\\OneDrive\\Desktop\\NULLVOID.AI\\trigger.config.mjs",
+  "customConditions": [
+  ],
+  "prompts": [
+  ],
+  "queues": [
+  ],
+  "runtime": "node",
+  "runtimeVersion": "24.16.0",
+  "skills": [
+  ],
+  "tasks": [
+    {
+      "entryPoint": "C:\\Users\\iambr\\OneDrive\\Desktop\\NULLVOID.AI\\.trigger\\tmp\\build-OvViNq\\OneDrive\\Desktop\\NULLVOID.AI\\trigger\\design-agent.mjs",
+      "filePath": "trigger/design-agent.ts",
+      "id": "design-agent",
+      "maxDuration": 3600,
+      "retry": {
+        "factor": 2,
+        "maxAttempts": 2,
+        "maxTimeoutInMs": 60000,
+        "minTimeoutInMs": 1000,
+        "randomize": true
+      }
+    }
+  ],
+  "timings": {
+    "trigger/design-agent.ts": 141.90970000000004
+  },
+  "workerEntryPoint": "C:\\Users\\iambr\\OneDrive\\Desktop\\NULLVOID.AI\\.trigger\\tmp\\build-OvViNq\\AppData\\Local\\npm-cache\\_npx\\f51a09bd0abf5f10\\node_modules\\trigger.dev\\dist\\esm\\entryPoints\\dev-run-worker.mjs"
+}

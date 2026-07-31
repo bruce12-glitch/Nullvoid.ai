@@ -10,6 +10,7 @@ interface CaptureOptions {
 }
 
 export function captureCanvasSnapshot(options?: CaptureOptions) {
+  if (typeof document === "undefined") return false;
   const canvasElements = document.getElementsByTagName("canvas");
   
   if (canvasElements.length === 0) {

@@ -10,7 +10,12 @@ export function useSpecData(projectId: string) {
     try {
       const spec = await getLatestSpecForProject(projectId);
       if (spec) {
-        setSpec(spec);
+        setSpec({
+          id: spec.id,
+          projectId: spec.projectId,
+          filePath: spec.filePath,
+          createdAt: spec.createdAt,
+        });
       }
     } catch (error) {
       console.error("Failed to fetch latest spec:", error);

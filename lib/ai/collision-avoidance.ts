@@ -5,8 +5,12 @@ const MIN_GAP = 1.5;
 const MIN_DISTANCE = NODE_SIZE + MIN_GAP;
 
 export function applyCollisionAvoidance(nodes: CanvasNode[]): CanvasNode[] {
-  // Deep clone nodes to avoid mutating original references
-  const resolvedNodes = JSON.parse(JSON.stringify(nodes)) as CanvasNode[];
+  // Deep clone nodes to avoid mutating original references, and guarantee a
+  // position object so the distance math below never dereferences undefined.
+  const resolvedNodes = (JSON.parse(JSON.stringify(nodes)) as CanvasNode[]).map((n) => ({
+    ...n,
+    position: n.position ?? { x: 0, y: 0, z: 0 },
+  }));
   
   const iterations = 50;
   
@@ -20,7 +24,7 @@ export function applyCollisionAvoidance(nodes: CanvasNode[]): CanvasNode[] {
         
         // Since our tiers enforce strict Z positioning, collisions mainly happen
         // if two nodes share the same Z (same tier) and have overlapping X
-        const dz = nodeA.position.z! - nodeB.position.z!;
+        const dz = (nodeA.position.z ?? 0) - (nodeB.position.z ?? 0);
         
         // Only resolve collisions for nodes in the same tier (or very close Z)
         if (Math.abs(dz) < 1.0) {

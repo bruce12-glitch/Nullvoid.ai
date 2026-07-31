@@ -3,11 +3,8 @@ import { create } from "zustand";
 export interface SpecData {
   id: string;
   projectId: string;
-  title: string;
-  content: string;
-  status: "PENDING" | "GENERATING" | "COMPLETED" | "FAILED";
+  filePath: string;
   createdAt: Date;
-  updatedAt: Date;
 }
 
 interface SpecStore {

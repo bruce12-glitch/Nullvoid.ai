@@ -19,8 +19,7 @@ export async function generateArchitectureSpec(
   retries = 2
 ): Promise<ArchitectureGenerationResponse> {
   const client = getGeminiClient();
-  const model = client.models.get({ model: getDefaultModel("flash") });
-  
+
   const fullPrompt = `USER REQUEST: ${prompt}\n\nCONTEXT:\n${context || "Empty canvas"}`;
 
   for (let attempt = 0; attempt <= retries; attempt++) {

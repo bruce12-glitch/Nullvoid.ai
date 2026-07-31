@@ -29,14 +29,17 @@ export function SpecSidebar({ projectId }: SpecSidebarProps) {
     );
   }
 
-  // Parse the JSON content
+  // Parse the spec filePath as JSON content
   let parsedSpec: any = null;
   try {
-    if (currentSpec?.content) {
-      parsedSpec = JSON.parse(currentSpec.content);
+    if (currentSpec?.filePath) {
+      parsedSpec = JSON.parse(currentSpec.filePath);
     }
   } catch (e) {
-    console.error("Failed to parse spec content", e);
+    // filePath may be plain text, not JSON - treat as raw markdown
+    if (currentSpec?.filePath) {
+      parsedSpec = { overview: { description: currentSpec.filePath }, specification: {} };
+    }
   }
 
   const handleCopy = () => {
@@ -116,7 +119,7 @@ export function SpecSidebar({ projectId }: SpecSidebarProps) {
         </Tabs>
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center text-text-muted">
-          {currentSpec?.status === "GENERATING" ? (
+          {currentSpec?.filePath === "generation-in-progress" ? (
             <p className="text-sm animate-pulse">Generation in progress...</p>
           ) : (
             <p className="text-sm text-center">No specification available.<br/>Generate one using the AI tool.</p>

@@ -1,5 +1,11 @@
 import { create } from "zustand";
 import type { CanvasNode, CanvasEdge, NodeType, Position3D, Rotation3D } from "@/types/canvas";
+import { useCanvasHistory } from "@/stores/useCanvasHistory";
+
+// Record the pre-mutation state so manual edits can be undone.
+function snapshotBefore(nodes: CanvasNode[], edges: CanvasEdge[]) {
+  useCanvasHistory.getState().captureSnapshot(nodes, edges);
+}
 
 export type CanvasMode = "IDLE" | "SELECTING" | "CONNECTING" | "PLACING_NODE";
 
@@ -69,26 +75,38 @@ export const useCanvasStore = create<CanvasStoreState>((set) => ({
   setEdges: (edges) => set({ edges }),
 
   addNode: (node) =>
-    set((state) => ({ nodes: [...state.nodes, node] })),
+    set((state) => {
+      snapshotBefore(state.nodes, state.edges);
+      return { nodes: [...state.nodes, node] };
+    }),
 
   addEdge: (edge) =>
-    set((state) => ({ edges: [...state.edges, edge] })),
+    set((state) => {
+      snapshotBefore(state.nodes, state.edges);
+      return { edges: [...state.edges, edge] };
+    }),
 
   removeNode: (id) =>
-    set((state) => ({
-      nodes: state.nodes.filter((n) => n.id !== id),
-      edges: state.edges.filter(
-        (e) => e.sourceNodeId !== id && e.targetNodeId !== id
-      ),
-      selectedNodeIds: state.selectedNodeIds.filter((sId) => sId !== id),
-    })),
+    set((state) => {
+      snapshotBefore(state.nodes, state.edges);
+      return {
+        nodes: state.nodes.filter((n) => n.id !== id),
+        edges: state.edges.filter(
+          (e) => e.sourceNodeId !== id && e.targetNodeId !== id
+        ),
+        selectedNodeIds: state.selectedNodeIds.filter((sId) => sId !== id),
+      };
+    }),
 
   updateNodePosition: (id, position) =>
-    set((state) => ({
-      nodes: state.nodes.map((n) =>
-        n.id === id ? { ...n, position } : n
-      ),
-    })),
+    set((state) => {
+      snapshotBefore(state.nodes, state.edges);
+      return {
+        nodes: state.nodes.map((n) =>
+          n.id === id ? { ...n, position } : n
+        ),
+      };
+    }),
 
   // Selection & Inspector actions
   selectSingleNode: (id) => set({ selectedNodeIds: [id], selectedEdgeIds: [] }),
@@ -123,6 +141,7 @@ export const useCanvasStore = create<CanvasStoreState>((set) => ({
   })),
 
   deleteSelectedNodes: () => set((state) => {
+    snapshotBefore(state.nodes, state.edges);
     const selectedSet = new Set(state.selectedNodeIds);
     return {
       nodes: state.nodes.filter((n) => !selectedSet.has(n.id)),
@@ -134,6 +153,7 @@ export const useCanvasStore = create<CanvasStoreState>((set) => ({
   }),
 
   deleteSelectedEdges: () => set((state) => {
+    snapshotBefore(state.nodes, state.edges);
     const selectedSet = new Set(state.selectedEdgeIds);
     return {
       edges: state.edges.filter((e) => !selectedSet.has(e.id)),
@@ -141,17 +161,23 @@ export const useCanvasStore = create<CanvasStoreState>((set) => ({
     };
   }),
 
-  updateSelectedNodeProperty: (key, value) => set((state) => ({
-    nodes: state.nodes.map((n) =>
-      state.selectedNodeIds.includes(n.id) ? { ...n, [key]: value } : n
-    ),
-  })),
+  updateSelectedNodeProperty: (key, value) => set((state) => {
+    snapshotBefore(state.nodes, state.edges);
+    return {
+      nodes: state.nodes.map((n) =>
+        state.selectedNodeIds.includes(n.id) ? { ...n, [key]: value } : n
+      ),
+    };
+  }),
 
-  updateSelectedEdgeProperty: (key, value) => set((state) => ({
-    edges: state.edges.map((e) =>
-      state.selectedEdgeIds.includes(e.id) ? { ...e, [key]: value } : e
-    ),
-  })),
+  updateSelectedEdgeProperty: (key, value) => set((state) => {
+    snapshotBefore(state.nodes, state.edges);
+    return {
+      edges: state.edges.map((e) =>
+        state.selectedEdgeIds.includes(e.id) ? { ...e, [key]: value } : e
+      ),
+    };
+  }),
 
   // Interaction actions
   hoverNode: (id) => set({ hoveredNodeId: id }),

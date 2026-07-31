@@ -14,29 +14,20 @@ const PRESET_COLORS = [
 ];
 
 export function InspectorPanel() {
-  const { 
-    selectedNodeIds, selectedEdgeIds, 
-    nodes, edges, 
-    updateSelectedNodeProperty, updateSelectedEdgeProperty, 
-    deleteSelectedNodes, deleteSelectedEdges 
-  } = useCanvasStore();
+  const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds);
+  const selectedEdgeIds = useCanvasStore((s) => s.selectedEdgeIds);
+  const nodes = useCanvasStore((s) => s.nodes);
+  const edges = useCanvasStore((s) => s.edges);
+  const updateSelectedNodeProperty = useCanvasStore((s) => s.updateSelectedNodeProperty);
+  const updateSelectedEdgeProperty = useCanvasStore((s) => s.updateSelectedEdgeProperty);
+  const deleteSelectedNodes = useCanvasStore((s) => s.deleteSelectedNodes);
+  const deleteSelectedEdges = useCanvasStore((s) => s.deleteSelectedEdges);
   const { gizmoMode } = useCanvasTools();
   
-  // Try to use Liveblocks sync hooks if in room context
-  let updateNodeCRDT: ReturnType<typeof useUpdateNodeCRDT> | undefined;
-  let deleteNodesCRDT: ReturnType<typeof useDeleteNodesCRDT> | undefined;
-  let updateEdgeCRDT: ReturnType<typeof useUpdateEdgeCRDT> | undefined;
-  let deleteEdgesCRDT: ReturnType<typeof useDeleteEdgesCRDT> | undefined;
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    updateNodeCRDT = useUpdateNodeCRDT();
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    deleteNodesCRDT = useDeleteNodesCRDT();
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    updateEdgeCRDT = useUpdateEdgeCRDT();
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    deleteEdgesCRDT = useDeleteEdgesCRDT();
-  } catch (e) {}
+  const updateNodeCRDT = useUpdateNodeCRDT();
+  const deleteNodesCRDT = useDeleteNodesCRDT();
+  const updateEdgeCRDT = useUpdateEdgeCRDT();
+  const deleteEdgesCRDT = useDeleteEdgesCRDT();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleUpdateNode = (key: any, value: any) => {
@@ -61,7 +52,7 @@ export function InspectorPanel() {
     if (!primaryNode) return null;
 
     return (
-      <div className="absolute top-22 bottom-24 right-4 w-80 flex flex-col bg-card/60 backdrop-blur-md border border-border/40 rounded-xl shadow-2xl z-20 pointer-events-auto overflow-hidden text-card-foreground">
+      <div className="absolute top-22 bottom-24 right-4 w-80 flex flex-col bg-card/60 backdrop-blur-md border border-border/40 rounded-xl shadow-2xl z-20 pointer-events-auto overflow-hidden text-card-foreground animate-slide-in-right">
         <div className="flex items-center justify-between p-3 border-b border-border/40">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-foreground uppercase tracking-wider">Properties</span>
@@ -186,8 +177,8 @@ export function InspectorPanel() {
     const primaryEdge = edges.find(e => e.id === selectedEdgeIds[0]);
     if (!primaryEdge) return null;
 
-    return (
-      <div className="absolute top-22 bottom-24 right-4 w-80 flex flex-col bg-card/60 backdrop-blur-md border border-border/40 rounded-xl shadow-2xl z-20 pointer-events-auto overflow-hidden text-card-foreground">
+      return (
+      <div className="absolute top-22 bottom-24 right-4 w-80 flex flex-col bg-card/60 backdrop-blur-md border border-border/40 rounded-xl shadow-2xl z-20 pointer-events-auto overflow-hidden text-card-foreground animate-slide-in-right">
         <div className="flex items-center justify-between p-3 border-b border-border/40">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-foreground uppercase tracking-wider">Edge Properties</span>

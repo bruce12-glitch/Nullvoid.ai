@@ -1,10 +1,11 @@
-import { task, logger } from "@trigger.dev/sdk/v3";
+import { task, logger, metadata } from "@trigger.dev/sdk/v3";
 import { LiveObject } from "@liveblocks/client";
 import { getLiveblocks } from "@/lib/liveblocks";
 import { generateArchitectureSpec } from "@/lib/ai/spec-generator";
 import { prisma } from "@/lib/prisma";
 import { applyLayoutEngine } from "@/lib/ai/layout-engine";
 import { applyCollisionAvoidance } from "@/lib/ai/collision-avoidance";
+import { put } from "@vercel/blob";
 
 const AI_USER_ID = "ghost-ai";
 const AI_USER_INFO = { name: "Ghost AI Architect", avatar: "", color: "#6457f9" };
@@ -15,13 +16,11 @@ export const generateArchitecture = task({
   run: async (payload: { prompt: string; projectId: string; userId: string; canvasId: string }) => {
     const lb = getLiveblocks();
 
-    // 1. Create/Set Spec status in Prisma Neon database to GENERATING
-    const specRecord = await prisma.spec.create({
+    // 1. Create a spec record in Prisma
+    const specRecord = await prisma.projectSpec.create({
       data: {
         projectId: payload.projectId,
-        title: "3D Architecture Generation",
-        content: "Generation in progress...",
-        status: "GENERATING",
+        filePath: "generation-in-progress",
       }
     });
 
@@ -59,7 +58,7 @@ export const generateArchitecture = task({
       let result = await generateArchitectureSpec(payload.prompt, canvasContext);
 
       // Apply Layout Engine and Collision Avoidance
-      result.nodes = applyLayoutEngine(result.nodes as any, result.edges as any) as any;
+      result.nodes = await applyLayoutEngine(result.nodes as any, result.edges as any) as any;
       result.nodes = applyCollisionAvoidance(result.nodes as any) as any;
 
       await lb.broadcastEvent(payload.canvasId, {
@@ -83,18 +82,23 @@ export const generateArchitecture = task({
         });
       });
 
-      // 4. Update Prisma Spec to COMPLETED
+      // 4. Update Prisma spec record
       const specContent = JSON.stringify({
         overview: result.overview,
         specification: result.specification
       });
       
-      await prisma.spec.update({
+      const blob = await put(`specs/${payload.projectId}/${Date.now()}-architecture.json`, specContent, {
+        access: "private",
+        contentType: "application/json",
+        addRandomSuffix: false,
+        allowOverwrite: true,
+      });
+      
+      await prisma.projectSpec.update({
         where: { id: specRecord.id },
         data: {
-          content: specContent,
-          title: "Architecture Specification",
-          status: "COMPLETED",
+          filePath: blob.url,
         }
       });
 
@@ -114,10 +118,16 @@ export const generateArchitecture = task({
       // 6. Catch errors gracefully
       logger.error("Failed to generate architecture:", error);
 
-      await prisma.spec.update({
-        where: { id: specRecord.id },
-        data: { status: "FAILED", content: "Failed to generate spec." }
-      });
+      // Best-effort status write — never let error-handling itself throw,
+      // otherwise it would mask the original error.
+      try {
+        await prisma.projectSpec.update({
+          where: { id: specRecord.id },
+          data: { filePath: "Failed to generate spec." }
+        });
+      } catch {
+        // ignore — the original error is the one that matters
+      }
 
       await lb.broadcastEvent(payload.canvasId, {
         type: "ai-status",

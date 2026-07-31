@@ -1,23 +1,37 @@
 import { useEffect, useState } from "react";
-import { createActor } from "xstate";
+import { createActor, type Actor } from "xstate";
 import { canvasMachine } from "@/machines/canvasMachine";
 import { useCanvasStore } from "@/stores/useCanvasStore";
 import type { CanvasMode } from "@/stores/useCanvasStore";
 
-// Global singleton actor for the canvas FSM
-export const canvasFSMActor = createActor(canvasMachine);
+// Lazily create and cache the singleton actor (only on client)
+let actorInstance: ReturnType<typeof createActor> | null = null;
 
-// Start immediately on client-side
-if (typeof window !== "undefined") {
-  canvasFSMActor.start();
-  
-  // Global Keyboard Guards (Escape to cancel)
-  window.addEventListener("keydown", (e: KeyboardEvent) => {
-    if (e.key === "Escape") {
-      canvasFSMActor.send({ type: "CANCEL" });
-    }
-  });
+function getCanvasActor(): ReturnType<typeof createActor> {
+  if (typeof window === "undefined") {
+    // Return a no-op actor proxy on the server
+    return {
+      getSnapshot: () => ({ value: "idle", context: {} }),
+      send: () => {},
+      subscribe: () => ({ unsubscribe: () => {} }),
+      start: () => {},
+      stop: () => {},
+      status: "stopped" as const,
+    } as unknown as ReturnType<typeof createActor>;
+  }
+  if (!actorInstance) {
+    actorInstance = createActor(canvasMachine);
+    actorInstance.start();
+  }
+  return actorInstance;
 }
+
+// Global accessor for the singleton actor
+export const canvasFSMActor = new Proxy({} as ReturnType<typeof createActor>, {
+  get(_, prop) {
+    return Reflect.get(getCanvasActor(), prop);
+  },
+});
 
 export function useCanvasFSM() {
   const [state, setState] = useState(canvasFSMActor.getSnapshot());

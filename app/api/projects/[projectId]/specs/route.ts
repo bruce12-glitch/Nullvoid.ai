@@ -14,13 +14,12 @@ export async function GET(
   const hasAccess = await userHasProjectAccess(projectId, identity)
   if (!hasAccess) return Response.json({ error: "Not found" }, { status: 404 })
 
-  const specs = await prisma.spec.findMany({
+  const specs = await prisma.projectSpec.findMany({
     where: { projectId },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
-      title: true,
-      status: true,
+      filePath: true,
       createdAt: true,
     },
   })

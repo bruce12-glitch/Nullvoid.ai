@@ -75,6 +75,7 @@ export function exportCanvasToJSON(
  * Downloads a JSON string as a file to the user's local disk.
  */
 export function downloadJSONFile(jsonString: string, filename?: string) {
+  if (typeof document === "undefined" || typeof Blob === "undefined") return;
   const blob = new Blob([jsonString], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   

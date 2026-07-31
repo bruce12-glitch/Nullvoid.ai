@@ -1,6 +1,5 @@
 import { Webhook } from "svix"
 import { headers } from "next/headers"
-import { db } from "@/lib/db"
 
 type WebhookEvent = {
   type: string
@@ -48,37 +47,8 @@ export async function POST(req: Request) {
   const { id } = evt.data
   if (!id) return new Response("Missing user id", { status: 400 })
 
-  const eventType = evt.type
-
-  if (eventType === "user.created" || eventType === "user.updated") {
-    const email =
-      evt.data.email_addresses?.find(
-        (e) => e.email_address === evt.data.primary_email_address_id
-      )?.email_address ??
-      evt.data.email_addresses?.[0]?.email_address ??
-      `${id}@clerk.dev`
-
-    await db.user.upsert({
-      where: { id },
-      create: {
-        id,
-        email,
-        name: evt.data.full_name || [evt.data.first_name, evt.data.last_name].filter(Boolean).join(" ") || "User",
-        imageUrl: evt.data.image_url ?? null,
-      },
-      update: {
-        email,
-        name:
-          evt.data.full_name ??
-          [evt.data.first_name, evt.data.last_name].filter(Boolean).join(" "),
-        imageUrl: evt.data.image_url ?? undefined,
-      },
-    })
-  }
-
-  if (eventType === "user.deleted") {
-    await db.user.delete({ where: { id } }).catch(() => {})
-  }
+  // User identity is managed by Clerk externally; no local User table.
+  // Webhook events are acknowledged but not persisted to this database.
 
   return new Response("OK", { status: 200 })
 }

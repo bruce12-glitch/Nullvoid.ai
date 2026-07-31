@@ -1,11 +1,11 @@
-import { auth } from "@clerk/nextjs/server"
-import { prisma } from "@/lib/prisma"
+import { getCurrentProjectIdentity, getAccessibleProject } from "@/lib/project-access"
+import { verifyTriggerEnv } from "@/lib/trigger"
 import { tasks } from "@trigger.dev/sdk/v3"
 import type { designAgent } from "@/trigger/design-agent"
 
 export async function POST(request: Request) {
-  const { userId } = await auth()
-  if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+  const identity = await getCurrentProjectIdentity()
+  if (!identity.userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
   const body: unknown = await request.json().catch(() => ({}))
   const b = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {}
@@ -17,7 +17,18 @@ export async function POST(request: Request) {
     return Response.json({ error: "Missing required fields" }, { status: 400 })
   }
 
-  const handle = await tasks.trigger<typeof designAgent>("design-agent", { prompt, roomId, userId })
+  const project = await getAccessibleProject(projectId, identity)
+  if (!project) return Response.json({ error: "Not found" }, { status: 404 })
+
+  // The Liveblocks room is the project id. Requiring them to match prevents
+  // an authenticated user from triggering writes into another project's room.
+  if (roomId !== project.id) {
+    return Response.json({ error: "Room does not belong to this project" }, { status: 403 })
+  }
+
+  verifyTriggerEnv()
+
+  const handle = await tasks.trigger<typeof designAgent>("design-agent", { prompt, roomId, userId: identity.userId })
 
   return Response.json({ runId: handle.id }, { status: 201 })
 }

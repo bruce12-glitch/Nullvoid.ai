@@ -9,8 +9,9 @@ import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 
 export function Camera() {
-  const { cameraInvertY } = useCanvasPreferences();
-  const { cameraFlyTo, setCameraFlyTo } = useCanvasStore();
+  const cameraInvertY = useCanvasPreferences((s) => s.cameraInvertY);
+  const cameraFlyTo = useCanvasStore((s) => s.cameraFlyTo);
+  const setCameraFlyTo = useCanvasStore((s) => s.setCameraFlyTo);
   const controlsRef = useRef<OrbitControlsImpl>(null);
   
   const targetVec = useRef(new THREE.Vector3());
@@ -19,10 +20,8 @@ export function Camera() {
     if (cameraFlyTo && controlsRef.current) {
       targetVec.current.set(cameraFlyTo.x, cameraFlyTo.y, cameraFlyTo.z);
       
-      // Lerp the target to the destination
       controlsRef.current.target.lerp(targetVec.current, delta * 5);
       
-      // If we are close enough, stop flying
       if (controlsRef.current.target.distanceTo(targetVec.current) < 0.1) {
         setCameraFlyTo(null);
       }
@@ -37,14 +36,10 @@ export function Camera() {
       dampingFactor={0.05}
       minDistance={2}
       maxDistance={50}
-      // Math.PI / 2 is the horizon (90 degrees). 
-      // We subtract 0.05 to prevent the camera from clipping exactly into the floor grid.
       maxPolarAngle={Math.PI / 2 - 0.05}
       enablePan={true}
       enableZoom={true}
-      // To handle inversion we could hook into the internal state, but for OrbitControls
-      // there isn't a direct invertY prop. We'd map this in a custom camera control or leave standard.
-      // Left as a standard constraint setup.
+      rotateSpeed={cameraInvertY ? -0.5 : 0.5}
       mouseButtons={{
         LEFT: THREE.MOUSE.ROTATE,
         MIDDLE: THREE.MOUSE.DOLLY,

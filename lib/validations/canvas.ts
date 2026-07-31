@@ -3,13 +3,13 @@ import { z } from "zod";
 export const Position3DSchema = z.object({
   x: z.number(),
   y: z.number(),
-  z: z.number(),
+  z: z.number().optional(),
 });
 
 export const Rotation3DSchema = z.object({
   x: z.number(),
   y: z.number(),
-  z: z.number(),
+  z: z.number().optional(),
 });
 
 export const NodeTypeSchema = z.enum([
@@ -57,7 +57,7 @@ export const CanvasExportSchema = z.object({
   nodes: z.array(CanvasNodeSchema),
   edges: z.array(CanvasEdgeSchema),
   version: z.string(),
-});
+}).passthrough();
 
 export const SystemSpecSchema = z.object({
   id: z.string(),

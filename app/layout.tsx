@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "Ghost AI",
-  description: "AI-powered design collaboration",
+  title: "NullVoid.AI",
+  description: "Real-time collaborative system design workspace",
 }
 
 export default function RootLayout({

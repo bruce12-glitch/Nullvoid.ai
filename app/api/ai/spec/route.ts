@@ -1,6 +1,6 @@
-import { prisma } from "@/lib/prisma"
 import { tasks } from "@trigger.dev/sdk/v3"
 import { getCurrentProjectIdentity, getAccessibleProject } from "@/lib/project-access"
+import { verifyTriggerEnv } from "@/lib/trigger"
 import type { generateSpec } from "@/trigger/generate-spec"
 
 export async function POST(request: Request) {
@@ -23,6 +23,8 @@ export async function POST(request: Request) {
   if (!project) {
     return Response.json({ error: "Not found" }, { status: 404 })
   }
+
+  verifyTriggerEnv()
 
   const handle = await tasks.trigger<typeof generateSpec>("generate-spec", {
     projectId: project.id,

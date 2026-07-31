@@ -25,7 +25,7 @@ const SUGGESTIONS = [
 ];
 
 // ── ChatPanel component ───────────────────────────────────────────────────────
-export function ChatPanel() {
+export function ChatPanel({ projectId }: { projectId?: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
@@ -40,8 +40,9 @@ export function ChatPanel() {
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { nodes, edges } = useCanvasStore();
-  const { canUndo } = useCanvasHistory();
+  const nodes = useCanvasStore((s) => s.nodes);
+  const edges = useCanvasStore((s) => s.edges);
+  const canUndo = useCanvasHistory((s) => s.canUndo);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -86,10 +87,13 @@ export function ChatPanel() {
       const res = await fetch("/api/ai/chat-modify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, nodes, edges }),
+        body: JSON.stringify({ prompt, nodes, edges, projectId }),
       });
 
-      if (!res.ok) throw new Error("Failed to get AI response");
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(data?.error ?? "Failed to get AI response");
+      }
       const delta: DeltaPatchResponse = await res.json();
 
       // Apply delta patches to the canvas store
@@ -114,7 +118,7 @@ export function ChatPanel() {
     } finally {
       setIsLoading(false);
     }
-  }, [nodes, edges, isLoading]);
+  }, [nodes, edges, projectId, isLoading]);
 
   const handleRevert = useCallback(() => {
     const success = revertLastPatch();

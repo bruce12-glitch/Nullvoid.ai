@@ -1,5 +1,4 @@
 import { auth } from "@clerk/nextjs/server"
-import { prisma } from "@/lib/prisma"
 import { auth as triggerAuth } from "@trigger.dev/sdk/v3"
 
 export async function POST(request: Request) {

@@ -1,3 +1,5 @@
+"use client";
+
 import { useCanvasStore } from "@/stores/useCanvasStore";
 import { Badge } from "@/components/ui/badge";
 
@@ -8,7 +10,9 @@ interface ServicesTabProps {
 }
 
 export function ServicesTab({ services }: ServicesTabProps) {
-  const { nodes, hoverNode, selectSingleNode } = useCanvasStore();
+  const nodes = useCanvasStore((s) => s.nodes);
+  const hoverNode = useCanvasStore((s) => s.hoverNode);
+  const selectSingleNode = useCanvasStore((s) => s.selectSingleNode);
 
   return (
     <div className="flex flex-col gap-3 h-full overflow-y-auto pr-2 pb-4">

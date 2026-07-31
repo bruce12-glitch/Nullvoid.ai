@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useEffect, useRef } from "react";
+import { useMemo, useRef } from "react";
+import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { QuadraticBezierLine } from "@react-three/drei";
 import { useCanvasStore } from "@/stores/useCanvasStore";
@@ -15,7 +16,10 @@ interface SystemEdgeProps {
 }
 
 export function SystemEdge({ edge }: SystemEdgeProps) {
-  const { nodes, selectedEdgeIds, selectSingleEdge, toggleEdgeSelection } = useCanvasStore();
+  const nodes = useCanvasStore((s) => s.nodes);
+  const selectedEdgeIds = useCanvasStore((s) => s.selectedEdgeIds);
+  const selectSingleEdge = useCanvasStore((s) => s.selectSingleEdge);
+  const toggleEdgeSelection = useCanvasStore((s) => s.toggleEdgeSelection);
 
   const sourceNode = nodes.find(n => n.id === edge.sourceNodeId);
   const targetNode = nodes.find(n => n.id === edge.targetNodeId);
@@ -31,8 +35,6 @@ export function SystemEdge({ edge }: SystemEdgeProps) {
       return { start: new THREE.Vector3(), end: new THREE.Vector3(), mid: new THREE.Vector3() };
     }
     
-    // In 3D, our nodes are at `position.x, position.y, position.z`.
-    // We'll attach the line to the top of the nodes (y + 1)
     const sPos = sourceNode.position;
     const tPos = targetNode.position;
 
@@ -46,27 +48,34 @@ export function SystemEdge({ edge }: SystemEdgeProps) {
 
   if (!sourceNode || !targetNode) return null;
 
-  // Determine colors based on type
+  // Determine colors and styles based on type
   let color = "#f8fafc";
+  let glowColor = "#f8fafc";
   let dashed = false;
 
   switch (edge.type) {
     case "SYNC_HTTP":
-      color = "#3b82f6"; // Blue/Cyan
+      color = "#3b82f6";
+      glowColor = "#60a5fa";
       break;
     case "ASYNC_EVENT":
-      color = "#f59e0b"; // Amber
+      color = "#f59e0b";
+      glowColor = "#fbbf24";
       dashed = true;
       break;
     case "GRPC":
-      color = "#8b5cf6"; // Violet
+      color = "#8b5cf6";
+      glowColor = "#a78bfa";
       break;
     case "WEBSOCKET":
-      color = "#22c55e"; // Green
+      color = "#22c55e";
+      glowColor = "#4ade80";
       break;
+    default:
+      color = "#f8fafc";
+      glowColor = "#ffffff";
   }
 
-  // Active Selection overrides color/thickness
   const renderColor = isSelected ? "#ffffff" : color;
   const lineWidth = isSelected ? 4 : 2;
 
@@ -88,8 +97,25 @@ export function SystemEdge({ edge }: SystemEdgeProps) {
     document.body.style.cursor = "auto";
   };
 
+  // Stop the ground plane from deselecting when an edge is clicked
+  const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+  };
+
   return (
     <group ref={groupRef}>
+      {/* Glow line (wider, transparent) */}
+      <QuadraticBezierLine
+        start={start}
+        end={end}
+        mid={mid}
+        color={glowColor}
+        lineWidth={lineWidth + 3}
+        transparent
+        opacity={isSelected ? 0.15 : 0.08}
+        toneMapped={false}
+      />
+      
       {/* Visible Edge */}
       <QuadraticBezierLine
         start={start}
@@ -102,8 +128,10 @@ export function SystemEdge({ edge }: SystemEdgeProps) {
         dashSize={1}
         gapSize={0.5}
         transparent
-        opacity={0.8}
+        opacity={0.9}
+        toneMapped={!isSelected}
         onClick={handleClick}
+        onPointerDown={handlePointerDown}
         onPointerOver={handlePointerOver}
         onPointerOut={handlePointerOut}
       />
@@ -118,6 +146,7 @@ export function SystemEdge({ edge }: SystemEdgeProps) {
         transparent
         opacity={0}
         onClick={handleClick}
+        onPointerDown={handlePointerDown}
         onPointerOver={handlePointerOver}
         onPointerOut={handlePointerOut}
       />

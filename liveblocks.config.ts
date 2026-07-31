@@ -18,18 +18,22 @@ declare global {
 
     ThreadMetadata: {};
 
-    FeedMessageData: {
-      // ai-status-feed
-      text?: string;
-      status?: "start" | "thinking" | "complete" | "error";
-      // ai-chat feed
-      sender?: string;
-      role?: "user" | "assistant";
-      content?: string;
-      timestamp?: string;
+    ActivitiesData: {
+      "$aiStatusFeed": {
+        text?: string;
+        status?: "start" | "thinking" | "complete" | "error";
+      };
+      "$aiChatFeed": {
+        sender?: string;
+        role?: "user" | "assistant";
+        content?: string;
+        timestamp?: string;
+      };
     };
 
     RoomInfo: {};
+
+    GroupInfo: {};
   }
 }
 

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useMemo, ReactNode } from "react";
 import { Canvas } from "@react-three/fiber";
 import { isWebGPUSupported } from "@/lib/webgpu-check";
 import * as THREE from "three";
+import { usePerformanceAdaptive } from "@/hooks/usePerformanceAdaptive";
 import { WebGLErrorBoundary } from "./WebGLErrorBoundary";
 
 interface CanvasContainerProps {
@@ -14,6 +15,9 @@ export function CanvasContainer({ children }: CanvasContainerProps) {
   const [hasWebGPU, setHasWebGPU] = useState<boolean | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [aspect, setAspect] = useState(1);
+
+  // Adaptive DPR driven by the PerformanceMonitor inside the Canvas
+  const adaptiveDpr = usePerformanceAdaptive((s) => s.dpr);
 
   useEffect(() => {
     isWebGPUSupported().then(setHasWebGPU);
@@ -36,30 +40,49 @@ export function CanvasContainer({ children }: CanvasContainerProps) {
   }, []);
 
   // Compute a base vertical FOV that adjusts on extreme widescreen vs tallscreen
-  // We want to prevent objects from appearing too large/squished when resizing.
   const computedFov = useMemo(() => {
     const baseFov = 45;
     if (aspect < 1) {
-      // In portrait, expand FOV slightly to keep content visible
       return baseFov * (1.2 / aspect);
     }
     return baseFov;
   }, [aspect]);
 
-  // To prevent SSR mismatch and complex WebGPU module resolution errors in Next.js,
-  // we initialize WebGPURenderer dynamically if supported, otherwise rely on WebGL2.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const glFactory = (props: any) => {
-    // If WebGPU is supported, we dynamically load it (pseudo-logic for safety)
+    let renderer: THREE.WebGLRenderer;
+    
     if (hasWebGPU && props.canvas) {
       try {
-        // Fallback WebGL2 (until three/webgpu is fully stable in R3F)
-        return new THREE.WebGLRenderer({ canvas: props.canvas, antialias: true, alpha: true, powerPreference: "high-performance", preserveDrawingBuffer: true });
+        renderer = new THREE.WebGLRenderer({ 
+          canvas: props.canvas, 
+          antialias: true, 
+          alpha: true, 
+          powerPreference: "high-performance", 
+          preserveDrawingBuffer: true,
+        });
       } catch (e) {
         console.warn("WebGPU initialization failed, falling back to WebGL2", e);
+        renderer = new THREE.WebGLRenderer({ 
+          canvas: props.canvas, 
+          antialias: true, 
+          alpha: true, 
+          powerPreference: "high-performance", 
+          preserveDrawingBuffer: true,
+        });
       }
+    } else {
+      renderer = new THREE.WebGLRenderer({ 
+        canvas: props.canvas, 
+        antialias: true, 
+        alpha: true, 
+        powerPreference: "high-performance", 
+        preserveDrawingBuffer: true,
+      });
     }
-    return new THREE.WebGLRenderer({ canvas: props.canvas, antialias: true, alpha: true, powerPreference: "high-performance", preserveDrawingBuffer: true });
+
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
+    return renderer;
   };
 
   return (
@@ -67,7 +90,7 @@ export function CanvasContainer({ children }: CanvasContainerProps) {
       <WebGLErrorBoundary>
         <Canvas
           shadows
-          dpr={[1, 2]} // Support high-DPI without infinite scaling
+          dpr={adaptiveDpr}
           camera={{ position: [0, 6, 12], fov: computedFov, near: 0.1, far: 1000 }}
           gl={glFactory}
         >

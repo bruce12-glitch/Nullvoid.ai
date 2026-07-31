@@ -5,14 +5,17 @@ import { PerformanceMonitor, Html } from "@react-three/drei";
 import { Activity, Cpu, MonitorPlay } from "lucide-react";
 import { useThree } from "@react-three/fiber";
 import { usePerformanceAdaptive } from "@/hooks/usePerformanceAdaptive";
+import { useCanvasPreferences } from "@/hooks/useCanvasPreferences";
 
 export function CanvasPerformance() {
   const [dpr, setDpr] = useState(2);
   const [fps, setFps] = useState(60);
   const [quality, setQuality] = useState<"high" | "medium" | "low">("high");
   
-  const { gl, scene } = useThree();
+  const { gl } = useThree();
   const setPerformanceMetrics = usePerformanceAdaptive((state) => state.setPerformanceMetrics);
+  const performanceMode = useCanvasPreferences((s) => s.performanceMode);
+  const showHud = performanceMode === "quality";
 
   return (
     <>
@@ -46,6 +49,7 @@ export function CanvasPerformance() {
         }}
       />
       
+      {showHud && (
       <Html
         position={[0, 0, 0]}
         zIndexRange={[0, 0]}
@@ -104,6 +108,7 @@ export function CanvasPerformance() {
           </div>
         </div>
       </Html>
+      )}
     </>
   );
 }

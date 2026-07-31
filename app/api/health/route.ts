@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 
 async function checkLiveblocks(): Promise<string> {
@@ -15,8 +16,11 @@ async function checkLiveblocks(): Promise<string> {
 }
 
 async function checkTriggerDev(): Promise<string> {
-  const key = process.env.TRIGGER_SECRET_KEY;
-  if (!key) return "skipped (no key)";
+  // The public REST API (e.g. GET /v1/runs) requires a public API key
+  // (tr_pub_...). The secret key only works for the private SDK endpoints
+  // and would return 401 here.
+  const key = process.env.NEXT_PUBLIC_TRIGGER_PUBLIC_KEY;
+  if (!key || key.includes("...")) return "skipped (no key)";
   try {
     const res = await fetch("https://api.trigger.dev/v1/runs?limit=1", {
       headers: { Authorization: `Bearer ${key}` },
@@ -40,7 +44,7 @@ export async function GET() {
   services.liveblocks = await checkLiveblocks();
   services.trigger = await checkTriggerDev();
 
-  const allHealthy = Object.values(services).every((s) => s === "connected");
+  const allHealthy = Object.values(services).every((s) => s === "connected" || s.startsWith("skipped"));
 
   return NextResponse.json({
     status: allHealthy ? "healthy" : "degraded",

@@ -98,7 +98,7 @@ export const generateSpec = schemaTask({
   schema: payloadSchema,
   retry: { maxAttempts: 2, minTimeoutInMs: 1000, maxTimeoutInMs: 10000, factor: 2 },
   run: async (payload) => {
-    const google = createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_AI_API_KEY })
+    const google = createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY })
 
     metadata.set("status", "starting")
     logger.info("Generating spec", {
@@ -132,12 +132,10 @@ export const generateSpec = schemaTask({
       }
     )
 
-    const record = await prisma.spec.create({
+    const record = await prisma.projectSpec.create({
       data: {
-        title: "Architecture Specification",
-        content: spec,
+        filePath: blob.url,
         projectId: payload.projectId,
-        status: "COMPLETED",
       },
     })
 

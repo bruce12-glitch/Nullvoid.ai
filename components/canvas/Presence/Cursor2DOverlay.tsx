@@ -34,7 +34,17 @@ export function Cursor2DOverlay({ connectionId, x, y, z, color, name, avatar }: 
     }
   });
 
-  // Update target position when props change without triggering re-renders of the DOM
+  // Initialize group position on first render
+  useEffect(() => {
+    if (groupRef.current) {
+      groupRef.current.position.set(x, y, z);
+    }
+    targetPos.current.set(x, y, z);
+    // Only run once on mount to set initial position
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Update target position when props change
   useEffect(() => {
     targetPos.current.set(x, y, z);
   }, [x, y, z]);
@@ -47,7 +57,7 @@ export function Cursor2DOverlay({ connectionId, x, y, z, color, name, avatar }: 
   });
 
   return (
-    <group ref={groupRef} position={[x, y, z]}>
+    <group ref={groupRef}>
       <Html 
         center 
         zIndexRange={[100, 0]} 

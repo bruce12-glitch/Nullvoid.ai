@@ -86,6 +86,7 @@ export type CanvasNode = Node<CanvasNodeData, string> & {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metadata?: Record<string, any>;
   status?: "active" | "warning" | "error" | "idle";
+  _justAdded?: boolean;
 };
 
 export type CanvasEdge = Edge<CanvasEdgeData, string> & {

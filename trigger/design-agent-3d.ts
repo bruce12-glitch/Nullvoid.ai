@@ -5,6 +5,7 @@ import { getLiveblocks } from "@/lib/liveblocks";
 import { generateArchitectureSpec } from "@/lib/ai/spec-generator";
 import type { CanvasNode, CanvasEdge } from "@/types/canvas";
 import { prisma } from "@/lib/prisma";
+import { put } from "@vercel/blob";
 
 const AI_USER_ID = "ghost-ai";
 const AI_USER_INFO = { name: "Ghost AI 3D", avatar: "", color: "#6457f9" };
@@ -75,14 +76,19 @@ export const designAgent3D = task({
       });
 
       // 4. Save the generated Specification document to DB
-      const specContent = `# ${result.overview}\n\n## Services\n${result.specification.services.map(s => `- **${s.name}** (${s.type}): ${s.description} [Stack: ${s.techStack.join(", ")}]`).join("\n")}\n\n## Infrastructure & Security\n- **Cloud**: ${result.specification.infrastructure.cloudProvider} (${result.specification.infrastructure.region})\n- **Cost**: ${result.specification.infrastructure.estimateCost}\n- **Auth**: ${result.specification.security.authMethod}\n- **Encryption**: ${result.specification.security.encryption}\n- **Compliance**: ${result.specification.security.compliance.join(", ")}`;
+      const specContent = `# ${result.overview ?? "Architecture Overview"}\n\n## Services\n${(result.specification?.services ?? []).map(s => `- **${s.name}** (${s.type}): ${s.description} [Stack: ${(s.techStack ?? []).join(", ")}]`).join("\n")}\n\n## Infrastructure & Security\n- **Cloud**: ${result.specification?.infrastructure?.cloudProvider ?? "N/A"} (${result.specification?.infrastructure?.region ?? "N/A"})\n- **Cost**: ${result.specification?.infrastructure?.estimateCost ?? "N/A"}\n- **Auth**: ${result.specification?.security?.authMethod ?? "N/A"}\n- **Encryption**: ${result.specification?.security?.encryption ?? "N/A"}\n- **Compliance**: ${(result.specification?.security?.compliance ?? []).join(", ")}`;
+
+      const blob = await put(`specs/${payload.projectId}/${Date.now()}-design-agent.md`, specContent, {
+        access: "private",
+        contentType: "text/markdown",
+        addRandomSuffix: false,
+        allowOverwrite: true,
+      });
       
-      const record = await prisma.spec.create({
+      const record = await prisma.projectSpec.create({
         data: {
-          title: "3D Architecture Specification",
-          content: specContent,
+          filePath: blob.url,
           projectId: payload.projectId,
-          status: "COMPLETED",
         },
       });
 

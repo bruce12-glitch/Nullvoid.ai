@@ -125,15 +125,12 @@ export function AiSidebar({ isOpen, onClose, roomId, projectId }: AiSidebarProps
   const [specPublicToken, setSpecPublicToken] = useState<string | null>(null)
 
   // Canvas storage for spec generation context
-  // useStorage immutably serializes LiveMap as a plain readonly object, so use Object.values
-  const nodesArray = useStorage((root) => {
-    const m = root.nodes
-    return m ? Object.values(m) : []
-  })
-  const edgesArray = useStorage((root) => {
-    const m = root.edges
-    return m ? Object.values(m) : []
-  })
+  const nodesLiveMap = useStorage((root) => root.nodes)
+  const edgesLiveMap = useStorage((root) => root.edges)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nodesArray = nodesLiveMap ? Array.from((nodesLiveMap as any).values?.() ?? []) : []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const edgesArray = edgesLiveMap ? Array.from((edgesLiveMap as any).values?.() ?? []) : []
 
   const self = useSelf()
   const updateMyPresence = useUpdateMyPresence()

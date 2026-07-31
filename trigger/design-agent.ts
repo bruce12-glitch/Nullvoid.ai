@@ -158,7 +158,7 @@ export const designAgent = task({
   retry: { maxAttempts: 2 },
   run: async (payload: { prompt: string; roomId: string; userId: string }) => {
     const lb = getLiveblocks();
-    const google = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY });
+    const google = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY });
 
     await lb
       .setPresence(payload.roomId, {
@@ -214,16 +214,29 @@ export const designAgent = task({
         })
         .catch(() => {});
 
+      // Track whether the room's CRDT storage was actually present. On
+      // first-run rooms the client may not have connected yet, so
+      // root.get("nodes")/edges can be undefined — silently returning here
+      // would report success without applying anything.
+      let storageApplied = false;
+
       await lb.mutateStorage(payload.roomId, ({ root }) => {
         const nodes = root.get("nodes");
         const edges = root.get("edges");
         if (!nodes || !edges) return;
 
+        storageApplied = true;
         for (const call of actionCalls) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           applyToolCall(call, nodes as any, edges as any);
         }
       });
+
+      if (!storageApplied) {
+        throw new Error(
+          "Canvas storage is not initialized yet. Open the canvas once and try again."
+        );
+      }
 
       await lb
         .broadcastEvent(payload.roomId, {
@@ -289,6 +302,7 @@ function applyToolCall(
           {
             id,
             type: "canvasNode",
+            label,
             position: { x, y },
             data: { label, color: color.fill, textColor: color.text, shape },
             width: size.width,
@@ -360,8 +374,14 @@ function applyToolCall(
             type: "canvasEdge",
             source,
             target,
+            // 3D canvas + useDeleteNodesCRDT read these — React Flow only
+            // reads source/target. Writing both keeps the schemas compatible
+            // so 2D-agent edges render and get cleaned up with their nodes.
+            sourceNodeId: source,
+            targetNodeId: target,
             sourceHandle: null as string | null,
             targetHandle: null as string | null,
+            label: label ?? "",
             data: { label: label ?? "" },
             markerEnd: {
               type: "arrowclosed",

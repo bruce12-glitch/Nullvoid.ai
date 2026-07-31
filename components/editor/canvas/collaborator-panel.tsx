@@ -6,7 +6,7 @@ import { Activity, Wifi } from "lucide-react";
 
 export function CollaboratorPanel() {
   const others = useOthers();
-  const { setCameraFlyTo } = useCanvasStore();
+  const setCameraFlyTo = useCanvasStore((s) => s.setCameraFlyTo);
 
   if (others.length === 0) return null;
 

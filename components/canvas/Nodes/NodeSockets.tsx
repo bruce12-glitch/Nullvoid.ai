@@ -3,6 +3,9 @@
 import { useCanvasStore } from "@/stores/useCanvasStore";
 import { ThreeEvent } from "@react-three/fiber";
 import { useInsertEdgeCRDT } from "@/hooks/useLiveblocksCanvasSync";
+import { canvasFSMActor } from "@/hooks/useCanvasFSM";
+import { useCanvasTools } from "@/hooks/useCanvasTools";
+import type { CanvasEdge } from "@/types/canvas";
 
 interface NodeSocketsProps {
   nodeId: string;
@@ -18,14 +21,8 @@ export function NodeSockets({ nodeId, isVisible }: NodeSocketsProps) {
     addEdge
   } = useCanvasStore();
 
-  // Try to use Liveblocks insert mutation if we're in a room context
-  let insertEdgeCRDT: ReturnType<typeof useInsertEdgeCRDT> | undefined;
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    insertEdgeCRDT = useInsertEdgeCRDT();
-  } catch (e) {
-    // Fallback if not inside RoomProvider
-  }
+  // Liveblocks CRDT mutation (safe: returns no-op if not inside RoomProvider)
+  const insertEdgeCRDT = useInsertEdgeCRDT();
 
   const showSockets = isVisible || canvasMode === "CONNECTING";
 
@@ -58,19 +55,23 @@ export function NodeSockets({ nodeId, isVisible }: NodeSocketsProps) {
 
     // If drawingEdgeSource is set and it's NOT this node, create connection!
     if (drawingEdgeSource && drawingEdgeSource !== nodeId) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const edge = {
+      const edge: CanvasEdge = {
         id: `edge-${Date.now()}`,
         sourceNodeId: drawingEdgeSource,
         targetNodeId: nodeId,
-        type: "SYNC_HTTP", // Default type
+        type: "SYNC_HTTP",
+        label: "",
         data: {},
-        source: drawingEdgeSource, // XYFlow compatibility
-        target: nodeId, // XYFlow compatibility
-      } as any;
+        source: drawingEdgeSource,
+        target: nodeId,
+      };
       
       insertEdgeCRDT?.(edge);
       addEdge(edge);
+
+      // Complete the connect FSM state and reset the toolbar to SELECT
+      canvasFSMActor.send({ type: "COMPLETE_CONNECT" });
+      useCanvasTools.getState().setActiveTool("SELECT");
     }
     
     stopDrawingEdge();
@@ -99,22 +100,21 @@ export function NodeSockets({ nodeId, isVisible }: NodeSocketsProps) {
   return (
     <group>
       {socketPositions.map((pos, i) => (
-        <mesh 
-          key={i} 
-          position={pos} 
-          onPointerDown={handlePointerDown}
-          onPointerUp={handlePointerUp}
-          onPointerOver={handlePointerOver}
-          onPointerOut={handlePointerOut}
-        >
-          <sphereGeometry args={[0.15, 16, 16]} />
-          <meshBasicMaterial color="#ffffff" />
-          {/* subtle glow */}
-          <mesh scale={[1.4, 1.4, 1.4]}>
-             <sphereGeometry args={[0.15, 16, 16]} />
-             <meshBasicMaterial color="#3b82f6" transparent opacity={0.4} />
+        <group key={i} position={pos}>
+          <mesh
+            onPointerDown={handlePointerDown}
+            onPointerUp={handlePointerUp}
+            onPointerOver={handlePointerOver}
+            onPointerOut={handlePointerOut}
+          >
+            <sphereGeometry args={[0.15, 16, 16]} />
+            <meshBasicMaterial color="#ffffff" />
           </mesh>
-        </mesh>
+          <mesh scale={[1.4, 1.4, 1.4]}>
+            <sphereGeometry args={[0.15, 16, 16]} />
+            <meshBasicMaterial color="#3b82f6" transparent opacity={0.4} />
+          </mesh>
+        </group>
       ))}
     </group>
   );

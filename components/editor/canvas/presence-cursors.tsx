@@ -1,16 +1,30 @@
 "use client"
 
-import { useRef } from "react"
+import { useLayoutEffect, useRef, useState } from "react"
 import { useOthers } from "@liveblocks/react"
 import { useReactFlow, useViewport } from "@xyflow/react"
 import { Loader2 } from "lucide-react"
 
 export function PresenceCursors() {
   const containerRef = useRef<HTMLDivElement>(null)
+  const [offset, setOffset] = useState({ left: 0, top: 0 })
   const others = useOthers()
   const { flowToScreenPosition } = useReactFlow()
   // Subscribe to viewport so cursors reposition on pan/zoom
   useViewport()
+
+  // Track the overlay's position so cursor coordinates are relative to it.
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = containerRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      setOffset({ left: rect.left, top: rect.top })
+    }
+    measure()
+    window.addEventListener("resize", measure)
+    return () => window.removeEventListener("resize", measure)
+  }, [])
 
   return (
     <div
@@ -19,12 +33,11 @@ export function PresenceCursors() {
     >
       {others.map((other) => {
         const cursor = other.presence.cursor
-        if (!cursor || !containerRef.current) return null
+        if (!cursor) return null
 
-        const rect = containerRef.current.getBoundingClientRect()
         const screen = flowToScreenPosition(cursor)
-        const x = screen.x - rect.left
-        const y = screen.y - rect.top
+        const x = screen.x - offset.left
+        const y = screen.y - offset.top
         const color = other.info?.color ?? "#888888"
         const name = other.info?.name ?? "Anonymous"
 

@@ -56,6 +56,7 @@ export function generateArchitectureMarkdown(
  * Downloads a Markdown string as a file to the user's local disk.
  */
 export function downloadMarkdownFile(markdown: string, filename?: string) {
+  if (typeof document === "undefined" || typeof Blob === "undefined") return;
   const blob = new Blob([markdown], { type: "text/markdown" });
   const url = URL.createObjectURL(blob);
   

@@ -27,7 +27,8 @@ interface AnalyticsPanelProps {
 }
 
 export function AnalyticsPanel({ onClose }: AnalyticsPanelProps) {
-  const { nodes, edges } = useCanvasStore();
+  const nodes = useCanvasStore((s) => s.nodes);
+  const edges = useCanvasStore((s) => s.edges);
   const [requestVolumeMillion, setRequestVolumeMillion] = useState(1);
   const [provider, setProvider] = useState<CloudProvider>("AWS");
 

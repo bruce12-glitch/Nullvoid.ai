@@ -21,13 +21,13 @@ export default async function EditorWorkspacePage(
     return <AccessDenied />
   }
 
-  const { owned, shared } = await getProjectsForUser(identity.userId)
+  const { owned, shared } = await getProjectsForUser(identity.userId, identity.primaryEmailAddress)
 
   return (
     <EditorWorkspaceClient
-      currentProject={{ id: project.id, name: project.title }}
-      ownedProjects={owned.map((item) => ({ id: item.id, name: item.title }))}
-      sharedProjects={shared.map((item) => ({ id: item.id, name: item.title }))}
+      currentProject={{ id: project.id, name: project.name }}
+      ownedProjects={owned.map((item) => ({ id: item.id, name: item.name }))}
+      sharedProjects={shared.map((item) => ({ id: item.id, name: item.name }))}
       roomId={roomId}
     />
   )

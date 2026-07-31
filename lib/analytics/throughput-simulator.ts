@@ -50,8 +50,15 @@ function findCriticalPath(
   let maxLatency = 0;
   let criticalPath: string[] = [];
 
-  // DFS from each source to find the longest latency path
-  const dfs = (nodeId: string, path: string[], currentLatency: number) => {
+  // DFS from each source to find the longest latency path.
+  // `visited` tracks the current recursion path so cyclic edge sets
+  // (e.g. A→B→A) can never recurse forever.
+  const dfs = (
+    nodeId: string,
+    path: string[],
+    currentLatency: number,
+    visited: Set<string>
+  ) => {
     const neighbors = adjList.get(nodeId) ?? [];
     if (neighbors.length === 0) {
       if (currentLatency > maxLatency) {
@@ -61,13 +68,16 @@ function findCriticalPath(
       return;
     }
     for (const { targetId, edgeType } of neighbors) {
+      if (visited.has(targetId)) continue;
       const edgeLatency = PROTOCOL_LATENCY_MS[edgeType] ?? 5;
-      dfs(targetId, [...path, targetId], currentLatency + edgeLatency);
+      visited.add(targetId);
+      dfs(targetId, [...path, targetId], currentLatency + edgeLatency, visited);
+      visited.delete(targetId);
     }
   };
 
   for (const source of sources) {
-    dfs(source, [source], 0);
+    dfs(source, [source], 0, new Set([source]));
   }
 
   return { path: criticalPath, totalLatencyMs: maxLatency };

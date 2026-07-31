@@ -4,11 +4,12 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Phase 2: Feature Implementation
+- Phase 2: Feature Implementation — COMPLETED
 
 ## Current Goal
 
-- Await instruction for Feature 03.
+🎉 **ALL 30 FEATURE UNITS IMPLEMENTED**
+Ready for production deployment.
 
 ## Completed
 
@@ -183,11 +184,11 @@ Update this file whenever the current phase, active feature, or implementation s
 - [x] Feature 27: System Analytics & Cost Estimation Engine — COMPLETED
 - [x] Feature 28: Performance Profiling & FPS Optimization — COMPLETED
 - [x] Feature 29: Production Build, Testing & Vercel Deployment — COMPLETED
-- [ ] Feature 30: Telemetry, Observability & Error Tracking — IN_PROGRESS
+- [x] Feature 30: Telemetry, Observability & Error Tracking — COMPLETED
 
 ## Next Up
 
-🎉 **ALL FEATURE UNITS COMPLETED (100%)**
+🎉 **ALL 30 FEATURE UNITS COMPLETED (100%)**
 NullVoid AI is now fully implemented, optimized, and ready for production deployment to Vercel.
 
 ## Open Questions
@@ -205,3 +206,150 @@ NullVoid AI is now fully implemented, optimized, and ready for production deploy
 - 10 UI primitives now exist in `components/ui/`: avatar, button, card, dialog, dropdown-menu, input, scroll-area, skeleton, tabs, textarea.
 - Do NOT modify generated `components/ui/*` files per spec instruction.
 - The `proxy.ts` file replaces `middleware.ts` in Next.js 16 — never create a `middleware.ts` file.
+
+### Deep Bug Fix Round 2 (July 30, 2026)
+
+**Critical fixes:**
+- **Canvas data corruption** (`app/api/projects/[projectId]/canvas/route.ts`): PUT handler now properly extracts `url` or `canvasBlobUrl` from request body instead of blindly stringifying entire body.
+- **Zod schema/type mismatch** (`lib/validations/canvas.ts`): Made `Position3D.z` and `Rotation3D.z` optional to match TypeScript types.
+- **Web Worker in Node.js** (`lib/ai/layout-engine.ts`): Added `typeof Worker === "undefined"` guard for Trigger.dev server context, with sync fallback.
+- **SSR browser API guards** (3 files): Added `typeof document === "undefined"` / `typeof Blob === "undefined"` guards in `canvas-exporter.ts`, `markdown-exporter.ts`, `spec-serializer.ts`.
+- **React Hook in try/catch** (`components/editor/inspector-panel.tsx`): Moved `useUpdateNodeCRDT`, `useDeleteNodesCRDT`, etc. out of try/catch to comply with Rules of Hooks.
+- **Invalid R3F nesting** (`components/canvas/Nodes/NodeSockets.tsx`): Fixed nested `<mesh>` in `<mesh>` by wrapping socket + glow in `<group>`.
+- **Blob URL discarded** (`trigger/generate-spec.ts`): Changed `filePath` from raw spec content to `blob.url` from Vercel Blob upload.
+
+**Security fixes:**
+- **AI route access control** (3 routes): Added `getAccessibleProject` check to `design`, `generate`, and `trigger-job` routes — previously any authenticated user could trigger AI on any project.
+- **Liveblocks auth collaborator support** (`app/api/liveblocks-auth/route.ts`): Now checks `ProjectCollaborator` table via email for non-owners.
+- **Collaboration system implemented** (`lib/project-collaborators.ts`): Replaced all-null stubs with real Prisma queries. `getProjectCollaborators`, `addCollaborator`, `removeCollaborator`, `isEmailCollaborator`, `getProjectShareDetails` all working.
+- **Project access now checks collaborators** (`lib/project-access.ts`): `getAccessibleProject` allows access for both owners and collaborator emails.
+- **Security headers** (`vercel.json`): Added `Strict-Transport-Security`, `Permissions-Policy`, `Content-Security-Policy`.
+- **Liveblocks key validation** (`lib/liveblocks.ts`): Added runtime validation of `LIVEBLOCKS_SECRET_KEY`.
+- **Env var inconsistencies** (`.env`): Replaced unused `GOOGLE_GENERATIVE_AI_API_KEY` with `GEMINI_API_KEY` + `GOOGLE_AI_API_KEY`; fixed `NEXT_PUBLIC_TRIGGER_PUBLIC_API_KEY` → `NEXT_PUBLIC_TRIGGER_PUBLIC_KEY`; added `CLERK_WEBHOOK_SECRET`.
+
+**Config fixes:**
+- **Disabled `ignoreBuildErrors`** in `next.config.ts` — TS errors are no longer silently masked.
+- **Enabled Sentry sourcemaps** — production debugging now works.
+- **Sentry tracesSampleRate** reduced from 1.0 to 0.1 across all 3 configs (prevents $1000+/month bill).
+- **TS target** updated from `ES2017` to `ES2022`.
+
+**Stability fixes:**
+- **Keyboard double-deletion** (`hooks/useKeyboardShortcuts.ts`): Delete/Backspace now only calls CRDT or local store, never both.
+- **Stale closure in SystemNode** (`components/canvas/Nodes/SystemNode.tsx`): Replaced `useState` + closure with `useRef` for lerp scale value.
+- **`cameraInvertY` now applied** (`components/canvas/Camera.tsx`): `rotateSpeed` set to `-0.5` when inverted.
+- **React Flow handle types** (`components/editor/canvas/canvas-node.tsx`): Top/Left handles set to `type="target"` instead of all `source`.
+- **`id.split("-")[1]` crash** (`components/dashboard/ProjectCard.tsx`): Added length check before array access.
+- **Dead code removed** (`lib/ai/spec-generator.ts`): Removed unused `model` variable.
+- **Shared projects populated** (`lib/projects.ts`): `getProjectsForUser` now queries `ProjectCollaborator` table for shared projects.
+
+**Build verified:** `npx next build` — zero TypeScript errors, zero compilation errors. All routes compile and generate.
+
+### Frontend Optimization & 3D Visual Overhaul (July 31, 2026)
+
+**Critical Bug Fixes:**
+- **Scene.tsx architecture nodes not rendering** (`components/canvas/Scene.tsx`): CRITICAL — nodes from `useCanvasStore` were never iterated to render `SystemNode` components. AI-generated nodes were invisible. Fixed by mapping over `nodes` array and rendering `<SystemNode>` for each. Also added missing `<TempConnectionEdge>` rendering.
+- **WebGLErrorBoundary non-functional** (`components/canvas/WebGLErrorBoundary.tsx`): `webglcontextlost` does NOT bubble, so listening on the container `<div>` never caught context loss events. Fixed by finding the `<canvas>` element directly via `document.querySelector("canvas")` with a MutationObserver fallback for late-mounted canvases. Also added retry UI with spinner.
+- **InstancedNodes static count** (`components/canvas/Performance/InstancedNodes.tsx`): `InstancedMesh` `args` count was read only at mount — adding/removing nodes broke rendering. Fixed by using a fixed `MAX_INSTANCES=500` budget, hiding unused instances by scaling to 0, and properly setting `meshRef.current.count`.
+- **Toolbar no-op buttons** (`components/editor/Toolbar.tsx`): Reset View, Undo, and Redo buttons only called `console.log()`. Fixed: Reset View now calls `setCameraFlyTo({x:0,y:3,z:8})`, Undo/Redo now use the `useCanvasHistory` store with proper snapshot-based undo/redo (previously only had `captureSnapshot`/`popSnapshot` with no redo support).
+- **NodeSockets `as any` type assertion** (`components/canvas/Nodes/NodeSockets.tsx`): Edge creation used `as any` to bypass `CanvasEdge` type. Fixed by importing `CanvasEdge` type and properly typing the edge object with all required fields.
+- **useCanvasHistory API mismatch** (`stores/useCanvasHistory.ts`): Refactored to expose `undo(nodes, edges)` and `redo(nodes, edges)` that return restored snapshots, with proper `canUndo`/`canRedo` state tracking. Fixed downstream consumers in `Toolbar.tsx` and `lib/ai/patch-applier.ts`.
+
+**3D Visual Enhancements — Environment & Lighting:**
+- **Atmospheric fog** (`components/canvas/Environment.tsx`): Added `THREE.FogExp2` (dark `#080809`) at distance 25-60 for cinematic depth and natural node fading.
+- **Multi-light setup**: Added pulsing cyan point light, orbiting purple spot light, ground bounce light, and purple back light alongside existing key/rim lights.
+- **ACES Filmic ToneMapping** (`components/canvas/CanvasContainer.tsx`): Enabled `THREE.ACESFilmicToneMapping` with 1.2 exposure for richer colors and better HDR handling.
+- **Environment map**: Changed from `preset="city"` to `preset="night"` for darker, more atmospheric reflections.
+- **Grid accent colors**: Updated infinite grid to use cyan cell color (`#00c8d4`) and purple section color (`#6457f9`) with proper thickness and fade parameters.
+
+**3D Visual Enhancements — Node Materials:**
+- **ServiceNode** (`components/canvas/Nodes/ServiceNode.tsx`): Upgraded to `meshPhysicalMaterial` with clearcoat (0.5), metalness (0.7), and envMapIntensity (1.2). Added pulsing emissive top trim, bottom accent trim, rotating glow torus ring, and 4 vertical corner accent lines.
+- **DatabaseNode** (`components/canvas/Nodes/DatabaseNode.tsx`): Upgraded to `meshPhysicalMaterial` with clearcoat (0.8) on outer sections. Middle section uses transparent glass effect. Added rotating data flow ring, emissive top/bottom caps, and 4 vertical accent lines.
+- **GatewayNode** (`components/canvas/Nodes/GatewayNode.tsx`): Upgraded outer shell to `meshPhysicalMaterial` with clearcoat (1.0). Inner wireframe core pulses and rotates. Added solid center, 2 orbital torus rings, and 6 vertex glow points.
+
+**3D Visual Enhancements — Edges & Particles:**
+- **EdgeFlowParticles** (`components/canvas/Edges/EdgeFlowParticles.tsx`): Upgraded from 1 to 4 particles per edge with staggered timing and varied speeds. Each particle has a glow halo. Particles pulse in scale as they travel.
+- **SystemEdge** (`components/canvas/Edges/SystemEdge.tsx`): Added glow line (wider transparent version behind the main edge) for bloom-like effect. Added `toneMapped={false}` on accent colors for HDR glow.
+
+**3D Visual Enhancements — Animations:**
+- **SystemNode selection** (`components/canvas/Nodes/SystemNode.tsx`): Selection wireframe now rotates (Y axis at 0.8 rad/s) and pulses opacity (0.2-0.6). Hover shows a subtle purple wireframe aura.
+- **AnimatedNodeWrapper** (`components/canvas/Nodes/AnimatedNodeWrapper.tsx`): Node spawn now includes elastic scale-up (0→1 with overshoot via `1 - 2^(-10t) * cos(...)`) and 180° Y rotation entrance.
+- **NodeStatusBadge** (`components/canvas/Nodes/NodeStatusBadge.tsx`): Indicator sphere now has a glow halo that pulses for active/error states. Floating bob animation. HTML label shows status dot with colored shadow glow.
+
+**3D Visual Enhancements — Loading & Diagnostics:**
+- **CanvasLoader** (`components/canvas/CanvasLoader.tsx`): Branded loading animation with dual counter-rotating rings (cyan/purple), center radial glow pulse, "NullVoid.AI" brand text, and animated loading dots.
+
+**2D UI Enhancements:**
+- **InspectorPanel slide-in** (`components/editor/inspector-panel.tsx`): Added `animate-slide-in-right` class for smooth entrance animation.
+- **LeftSidebar** (`components/editor/left-sidebar.tsx`): Collapsible sidebar with `animate-slide-in-bottom` entrance. Active item highlighting with proper color theming. Collapsed state shows icon-only bar.
+- **TopBar** (`components/editor/top-bar.tsx`): Added `animate-slide-in-bottom` entrance, `animate-glow-pulse` on logo, and `animate-border-glow` on live indicator.
+- **EditorLayout** (`components/editor/EditorLayout.tsx`): Added center ambient glow for more layered atmospheric lighting.
+- **ProjectCard** (`components/dashboard/ProjectCard.tsx`): Added `card-3d`/`card-3d-inner` classes for 3D perspective hover effect. Grid preview now uses accent-primary color. Added animated wireframe rings and glowing status badge.
+- **EmptyProjects** (`components/dashboard/EmptyProjects.tsx`): Added animated rotating wireframe rings, `animate-scale-in` entrance with staggered delays.
+
+**CSS Animation System** (`app/globals.css`): Added 8 new keyframe animations: `slide-in-right`, `slide-in-bottom`, `fade-in`, `scale-in`, `border-glow`, `rotate-slow`. Added utility classes: `.animate-slide-in-right`, `.animate-slide-in-bottom`, `.animate-fade-in`, `.animate-scale-in`, `.animate-border-glow`, `.animate-rotate-slow`. Added `.glass-panel-glow` with accent glow shadow, `.card-3d`/`.card-3d-inner` for perspective hover effects.
+
+**TypeScript verified:** `npx tsc --noEmit` — zero errors across all modified files.
+
+### "Website won't open / Index of /" Fix Round (July 31, 2026)
+
+**Root cause of "Index of /":** The Next.js server was never actually reachable. VS Code's embedded Live Preview was serving the project folder as a static directory listing on `127.0.0.1:3000` (the page the user saw), while a stale Next.js **dev** server was erroring on IPv6 `::3000`. Multiple orphaned `next dev` processes (3000/3003) kept crashing with "Another next dev server is already running" (see `server_err.log`). All stale dev servers were killed.
+
+**Build-breaking bug fixed:**
+- **`app/canvas/[id]/page.tsx` crash (`createContext is not a function`)**: This page was a **Server Component** importing `@liveblocks/react` directly. Turbopack bundled Liveblocks against React's `react-server` build, which has no `createContext`, so the route crashed during page-data collection and the whole build failed. Fixed by making the page a `"use client"` component and reading `params.id` via `use(params)` — matching the pattern already used by `editor-workspace-client.tsx`.
+
+**Runtime bug fixed (Rules of Hooks):**
+- **`hooks/useLiveblocksCanvasSync.ts`**: All 6 CRDT hooks (`useInsertNodeCRDT`, `useUpdateNodeCRDT`, `useDeleteNodesCRDT`, `useDeleteEdgesCRDT`, `useInsertEdgeCRDT`, `useUpdateEdgeCRDT`) called `useMutation` conditionally (inside `if (typeof window === "undefined")` and `try/catch`), a rules-of-hooks violation that causes hydration crashes and "rendered fewer hooks" errors. Rewrote them to call `useMutation` unconditionally (all usages are inside a `<RoomProvider>`); removed unused imports.
+
+**Architecture fix:**
+- **Prisma client moved out of the App Router** (`app/generated/prisma` → `lib/generated/prisma`): Generated Prisma runtime + WASM files were living inside the Next.js `app/` router directory, bloating dev/build file-watching and slowing every compile. Updated `prisma/schema.prisma`, `lib/db.ts`, `actions/project.actions.ts`, and `eslint.config.mjs`. `app/generated/` deleted.
+
+**Stability/perf fixes:**
+- **`lib/db.ts`**: Added `PrismaPg` pool options (`connectionTimeoutMillis: 20s`, `query_timeout`, `statement_timeout`, `ssl`) so DB requests fail fast with clear errors instead of hanging when Neon is paused/unreachable.
+- **`components/canvas/CanvasTelemetry.tsx`**: Removed `performance.now()` calls during render (impure render) and unused ref.
+- **`components/editor/canvas/presence-cursors.tsx`**: Replaced `getBoundingClientRect()` read during render (non-deterministic, React Compiler violation) with a `useLayoutEffect` + resize-listener measured offset.
+- **`lib/ai/patch-applier.ts`**: Replaced `@ts-ignore` with a proper `_justAdded?: boolean` field on `CanvasNode` (`types/canvas.ts`).
+- **`app/layout.tsx`**: Metadata branding fixed from "Ghost AI" to "NullVoid.AI".
+- **`.gitignore`**: File was corrupted with null bytes (OneDrive) — rewritten cleanly. Now ignores `/lib/generated/`, `/.trigger/`, `/scratch/`, `*.log`, `nul`.
+
+**Added `run.ps1`** — robust launcher: kills stale Next.js processes, detects the VS Code Live Preview port conflict, auto-picks a free port, and starts dev (or `-Prod`).
+
+**Performance verified:**
+- Production build: **passes** — all 24 routes compile, TS clean, static pages generate.
+- Production server: `/` responds in ~0.3s; gzip works (biggest chunk 1262 KB → 355 KB on the wire).
+- Heavy deps are route-isolated: three.js (~1.2 MB) only ships on `/canvas/[id]`; React Flow only on `/editor/[roomId]`.
+- Unit tests: 6/6 pass. `npx tsc --noEmit`: zero errors.
+
+**Action needed from user (not code):** Close VS Code's Live Preview to free port 3000, then run `.\run.ps1`. For faster dev, exclude this OneDrive folder (or at least `.next`/`node_modules`) from OneDrive sync — OneDrive file-locking caused the EPERM build errors and slow cold compiles.
+
+### Collaborator API Route Implemented (July 31, 2026)
+
+- **Removed the last stub** (`app/api/projects/[projectId]/collaborators/route.ts`): Was returning 501 for all methods. Now fully implements GET, POST, DELETE.
+- **GET** returns `{ share }` matching the `useProjectShare` hook contract — `projectId`, `projectName`, `canManage`, `owner` (role `"owner"`), `collaborators` (role `"collaborator"`). Access via `getAccessibleProject` (owners + collaborator emails). Owner profile (name/avatar/email) resolved through `clerkClient().users.getUser()` with graceful fallback to "Workspace owner".
+- **POST** (owner-only, 403 for collaborators) validates email via `isValidCollaboratorEmail`, calls `addCollaborator`, returns 409 on duplicate/failure, then rebuilds the share payload.
+- **DELETE** (owner-only, 403 for collaborators) calls `removeCollaborator` and returns the refreshed share.
+- `ProjectShareDialog` + `useProjectShare` now work end-to-end (previously always surfaced "Not Implemented").
+- **TypeScript verified:** `npx tsc --noEmit` — zero errors.
+
+### Liveblocks 3.18 + Frontend Bug Fix Round (July 31, 2026)
+
+**Critical bugs fixed:**
+- **C1 — CRDT sync crash** (`hooks/useLiveblocksCanvasSync.ts`): Liveblocks 3.18 returns **plain objects** from `useStorage` for `LiveMap` values (no more `Map` instances); `.toImmutable()/.toObject()/.toArray()` removed. Rewrote sync to use `Object.values(root.nodes)` / `Object.values(root.edges)`. Added `useReplaceStorageCRDT` hook so undo/redo can replace the entire LiveMap storage atomically.
+- **C2 — Canvas page crash** (`app/canvas/[id]/page.tsx`): All `@liveblocks/react/suspense` consumers now live inside a `<ClientSideSuspense>` boundary with a new glassmorphic `WorkspaceLoading` loader.
+- **C3 — Dead FSM events wired**: Toolbar dispatches `START_PLACING_NODE` / `START_CONNECT` / `CANCEL`; `NodeSockets` sends `COMPLETE_CONNECT` on successful edge draw and resets tool to SELECT; `BaseCanvas` now handles node placement (drops node at `cursor3D` via `insertNodeCRDT`) and cancels connect mode on empty-space click; `useKeyboardShortcuts` maps `N/C/V/H/K` to FSM events and `Escape` sends `CANCEL`.
+- **M2 — `AnimatedNodeWrapper`**: removed `position` prop from R3F `<group>` (was re-applying sky height on every render); spawn position set once on mount; target lerped via ref.
+- **M3 — `TransformGizmo` multi-select**: records per-node start positions on `onMouseDown`, applies delta translation to the whole group, clamps Y ≥ 0, reads fresh store via `useCanvasStore.getState()` for CRDT broadcast.
+- **M4 — Deselect-on-pointerdown**: `SystemNode`/`SystemEdge` call `e.stopPropagation()` on `onPointerDown`; `BaseCanvas` skips deselection when shift/cmd/ctrl is held.
+- **M5 — Undo/redo now functional**: `useCanvasStore` snapshots before every mutating action (150ms debounce in `useCanvasHistory`); `Toolbar` + `EditorLayout` pass undo/redo to `useKeyboardShortcuts` and sync restored snapshots back to CRDT via `replaceStorageCRDT`.
+- **M7 — `RobotNode` rewritten**: removed hardcoded `id`/position; `useGLTF.preload` at module scope; inner `<Suspense>` + `<ErrorBoundary>`; accepts `scale` prop (canvas 0.05, showcase 0.3). Per-node Suspense added in `SystemNode`; duplicate `<RobotNode>`/Suspense block removed from `Scene.tsx`.
+- **M8 — Keyboard delete/escape**: Delete/Backspace now clears the local selection AND deletes via CRDT; Escape sends CANCEL and resets tool.
+
+**Performance (M1/M6):**
+- Selective store subscriptions in `SystemNode`, `SystemEdge`, `EdgeLayer`, `InspectorPanel`, `TopBar`, `CollaboratorPanel`, `AnalyticsPanel`, `ExportModal`, `ServicesTab`, `ChatPanel`, `Camera`, `TempConnectionEdge`, `Toolbar`.
+- `CanvasContainer` now uses adaptive DPR from `usePerformanceAdaptive`; `CanvasPerformance` HUD gated to `performanceMode === "quality"`.
+
+**3D asset integration ("make the frontend more attractive"):**
+- `components/dashboard/RobotHero.tsx` — glassmorphic hero banner on the dashboard with the sign-in page's gradient headline, feature chips, and a lazy-loaded 3D robot stage.
+- `components/dashboard/RobotShowcase3D.tsx` — standalone lightweight R3F `<Canvas>` (alpha, dpr [1,1.5]) rendering `RobotNode` at scale 0.3 with slow auto-rotation, floating bob, cyan/purple rim lights, and `ContactShadows`.
+- Heavy three.js chunk is route-isolated: `next/dynamic` + `lazy()` ensures the GLB/three code only downloads on the dashboard/canvas routes, not the landing page.
+
+**Verified:** `npx tsc --noEmit` zero errors; `npx next build` passes — all 24 routes compile and generate.

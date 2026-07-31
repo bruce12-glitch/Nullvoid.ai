@@ -2,7 +2,7 @@ import * as Sentry from "@sentry/nextjs";
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN || undefined,
-  tracesSampleRate: 1,
+  tracesSampleRate: 0.1,
   debug: false,
   beforeSend(event) {
     // Scrub sensitive headers or tokens in server-side requests

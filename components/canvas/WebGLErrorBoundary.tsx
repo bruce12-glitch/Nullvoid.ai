@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, ReactNode, useRef } from "react";
-import { AlertCircle } from "lucide-react";
+import { useEffect, useState, ReactNode, useCallback } from "react";
+import { AlertCircle, RefreshCw } from "lucide-react";
 
 interface WebGLErrorBoundaryProps {
   children: ReactNode;
@@ -9,11 +9,12 @@ interface WebGLErrorBoundaryProps {
 
 export function WebGLErrorBoundary({ children }: WebGLErrorBoundaryProps) {
   const [isContextLost, setIsContextLost] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+  // Find the canvas element and attach listeners directly (webglcontextlost does NOT bubble)
+  const attachListeners = useCallback(() => {
+    const canvas = document.querySelector("canvas");
+    if (!canvas) return null;
 
     const handleContextLost = (e: Event) => {
       e.preventDefault();
@@ -26,31 +27,54 @@ export function WebGLErrorBoundary({ children }: WebGLErrorBoundaryProps) {
       setIsContextLost(false);
     };
 
-    // WebGL events bubble up from the canvas to the container
-    container.addEventListener("webglcontextlost", handleContextLost, false);
-    container.addEventListener("webglcontextrestored", handleContextRestored, false);
+    canvas.addEventListener("webglcontextlost", handleContextLost, false);
+    canvas.addEventListener("webglcontextrestored", handleContextRestored, false);
 
     return () => {
-      container.removeEventListener("webglcontextlost", handleContextLost);
-      container.removeEventListener("webglcontextrestored", handleContextRestored);
+      canvas.removeEventListener("webglcontextlost", handleContextLost);
+      canvas.removeEventListener("webglcontextrestored", handleContextRestored);
     };
   }, []);
 
+  useEffect(() => {
+    // The canvas may not exist yet on mount, so we observe for it
+    const cleanup = attachListeners();
+    if (cleanup) return cleanup;
+
+    const observer = new MutationObserver(() => {
+      const cleanupFn = attachListeners();
+      if (cleanupFn) {
+        observer.disconnect();
+      }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      observer.disconnect();
+    };
+  }, [attachListeners, retryCount]);
+
   return (
-    <div ref={containerRef} className="absolute inset-0 pointer-events-none">
+    <div className="absolute inset-0 pointer-events-none">
       <div className="pointer-events-auto w-full h-full">
         {children}
       </div>
       
       {isContextLost && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md pointer-events-auto">
-          <div className="bg-card border border-border/40 rounded-2xl p-6 shadow-2xl flex flex-col items-center max-w-sm text-center space-y-4">
-            <AlertCircle className="w-12 h-12 text-red-500" />
+          <div className="bg-card border border-border/40 rounded-2xl p-8 shadow-2xl flex flex-col items-center max-w-sm text-center space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+              <AlertCircle className="w-8 h-8 text-red-500" />
+            </div>
             <div>
               <h2 className="text-lg font-semibold text-foreground mb-1">GPU Context Lost</h2>
               <p className="text-sm text-muted-foreground">
-                Your graphics processor ran out of memory or restarted. We are attempting to recover the 3D scene...
+                Your graphics processor ran out of memory or restarted. The 3D scene will attempt to recover automatically.
               </p>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <RefreshCw className="w-3 h-3 animate-spin" />
+              <span>Recovering...</span>
             </div>
           </div>
         </div>

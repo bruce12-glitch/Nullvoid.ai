@@ -6,9 +6,13 @@ describe("Validations", () => {
     const validNode = {
       id: "node-1",
       type: "SERVICE",
+      label: "Test Node",
       position: { x: 0, y: 0, z: 0 },
-      data: { label: "Test Node" },
-      color: "#1F1F1F"
+      rotation: { x: 0, y: 0, z: 0 },
+      scale: { x: 1, y: 1, z: 1 },
+      color: "#1F1F1F",
+      metadata: {},
+      status: "active",
     };
     expect(CanvasNodeSchema.safeParse(validNode).success).toBe(true);
   });
@@ -26,9 +30,9 @@ describe("Validations", () => {
   test("CanvasEdgeSchema validates correct edge", () => {
     const validEdge = {
       id: "edge-1",
-      source: "node-1",
-      target: "node-2",
-      type: "smoothstep"
+      sourceNodeId: "node-1",
+      targetNodeId: "node-2",
+      type: "SYNC_HTTP",
     };
     expect(CanvasEdgeSchema.safeParse(validEdge).success).toBe(true);
   });

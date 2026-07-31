@@ -8,42 +8,88 @@ interface CanvasSnapshot {
 }
 
 interface CanvasHistoryState {
-  snapshots: CanvasSnapshot[];
+  undoStack: CanvasSnapshot[];
+  redoStack: CanvasSnapshot[];
   canUndo: boolean;
+  canRedo: boolean;
   captureSnapshot: (nodes: CanvasNode[], edges: CanvasEdge[]) => void;
-  popSnapshot: () => CanvasSnapshot | null;
+  undo: (nodes: CanvasNode[], edges: CanvasEdge[]) => { nodes: CanvasNode[]; edges: CanvasEdge[] } | null;
+  redo: (nodes: CanvasNode[], edges: CanvasEdge[]) => { nodes: CanvasNode[]; edges: CanvasEdge[] } | null;
   clearHistory: () => void;
 }
 
 const MAX_SNAPSHOTS = 20;
 
+// Collapse rapid mutations (drags, AI patch batches, inspector keystrokes)
+// into a single history entry so undo steps feel natural.
+const CAPTURE_DEBOUNCE_MS = 150;
+let lastCaptureAt = 0;
+
 export const useCanvasHistory = create<CanvasHistoryState>((set, get) => ({
-  snapshots: [],
+  undoStack: [],
+  redoStack: [],
   canUndo: false,
+  canRedo: false,
 
   captureSnapshot: (nodes, edges) => {
+    const now = Date.now();
+    if (now - lastCaptureAt < CAPTURE_DEBOUNCE_MS) return;
+    lastCaptureAt = now;
+
     const snapshot: CanvasSnapshot = {
       nodes: JSON.parse(JSON.stringify(nodes)),
       edges: JSON.parse(JSON.stringify(edges)),
       timestamp: Date.now(),
     };
     set((state) => ({
-      snapshots: [...state.snapshots.slice(-(MAX_SNAPSHOTS - 1)), snapshot],
+      undoStack: [...state.undoStack.slice(-(MAX_SNAPSHOTS - 1)), snapshot],
+      redoStack: [],
       canUndo: true,
+      canRedo: false,
     }));
   },
 
-  popSnapshot: () => {
-    const { snapshots } = get();
-    if (snapshots.length === 0) return null;
+  undo: (currentNodes, currentEdges) => {
+    const { undoStack } = get();
+    if (undoStack.length === 0) return null;
 
-    const last = snapshots[snapshots.length - 1];
+    const currentSnapshot: CanvasSnapshot = {
+      nodes: JSON.parse(JSON.stringify(currentNodes)),
+      edges: JSON.parse(JSON.stringify(currentEdges)),
+      timestamp: Date.now(),
+    };
+
+    const previous = undoStack[undoStack.length - 1];
     set((state) => ({
-      snapshots: state.snapshots.slice(0, -1),
-      canUndo: state.snapshots.length > 1,
+      undoStack: state.undoStack.slice(0, -1),
+      redoStack: [...state.redoStack, currentSnapshot],
+      canUndo: state.undoStack.length > 1,
+      canRedo: true,
     }));
-    return last;
+
+    return { nodes: previous.nodes, edges: previous.edges };
   },
 
-  clearHistory: () => set({ snapshots: [], canUndo: false }),
+  redo: (currentNodes, currentEdges) => {
+    const { redoStack } = get();
+    if (redoStack.length === 0) return null;
+
+    const currentSnapshot: CanvasSnapshot = {
+      nodes: JSON.parse(JSON.stringify(currentNodes)),
+      edges: JSON.parse(JSON.stringify(currentEdges)),
+      timestamp: Date.now(),
+    };
+
+    const next = redoStack[redoStack.length - 1];
+    set((state) => ({
+      redoStack: state.redoStack.slice(0, -1),
+      undoStack: [...state.undoStack, currentSnapshot],
+      canUndo: true,
+      canRedo: state.redoStack.length > 1,
+    }));
+
+    return { nodes: next.nodes, edges: next.edges };
+  },
+
+  clearHistory: () => set({ undoStack: [], redoStack: [], canUndo: false, canRedo: false }),
 }));

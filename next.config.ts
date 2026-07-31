@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
   },
   transpilePackages: ["three", "@react-three/fiber", "@react-three/drei"],
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   experimental: {
     optimizePackageImports: [
@@ -41,7 +41,7 @@ export default withSentryConfig(
     project: process.env.SENTRY_PROJECT,
     widenClientFileUpload: true,
     sourcemaps: {
-      disable: true,
+      disable: false,
     },
   }
 );

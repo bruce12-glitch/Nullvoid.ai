@@ -5,6 +5,7 @@ import type { ReactFlowInstance } from "@xyflow/react"
 import { useCanvasStore } from "@/stores/useCanvasStore"
 import { useCanvasTools } from "@/hooks/useCanvasTools"
 import { useDeleteNodesCRDT } from "@/hooks/useLiveblocksCanvasSync"
+import { canvasFSMActor } from "@/hooks/useCanvasFSM"
 
 interface Options {
   reactFlow?: ReactFlowInstance | null
@@ -24,14 +25,8 @@ export function useKeyboardShortcuts(options?: Options) {
   const { reactFlow, undo, redo } = options || {}
   const { deleteSelectedNodes, clearSelection, selectAllNodes, selectedNodeIds } = useCanvasStore()
   
-  // Try to use Liveblocks delete mutation if we're in a room context
-  let deleteNodesCRDT: ReturnType<typeof useDeleteNodesCRDT> | undefined;
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    deleteNodesCRDT = useDeleteNodesCRDT();
-  } catch (e) {
-    // Fallback if not inside RoomProvider (e.g., standard layout)
-  }
+  // Liveblocks CRDT mutation (safe: returns no-op if not inside RoomProvider)
+  const deleteNodesCRDT = useDeleteNodesCRDT();
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -73,18 +68,37 @@ export function useKeyboardShortcuts(options?: Options) {
       // 3D Canvas / Selection Shortcuts
       if (event.key === "Delete" || event.key === "Backspace") {
         if (selectedNodeIds.length > 0) {
-          deleteNodesCRDT?.(selectedNodeIds)
+          // Sync the delete to CRDT AND clear the local store/selection so
+          // stale selected ids don't linger after the CRDT round-trip.
+          deleteNodesCRDT(selectedNodeIds)
+          deleteSelectedNodes()
         }
-        deleteSelectedNodes()
       } else if (event.key === "Escape") {
+        canvasFSMActor.send({ type: "CANCEL" })
+        useCanvasStore.getState().setActiveNodeTypeToPlace(null)
+        useCanvasTools.getState().setActiveTool("SELECT")
         clearSelection()
       } else if (meta && event.key === "a") {
         event.preventDefault()
         selectAllNodes()
       } else if (!meta) {
-        // Gizmo Hotkeys
         const key = event.key.toLowerCase()
-        if (key === "t" || key === "w") {
+        // Tool Hotkeys
+        if (key === "v") {
+          useCanvasTools.getState().setActiveTool("SELECT")
+        } else if (key === "h") {
+          useCanvasTools.getState().setActiveTool("PAN")
+        } else if (key === "n") {
+          const type = useCanvasStore.getState().activeNodeTypeToPlace || "SERVICE"
+          useCanvasStore.getState().setActiveNodeTypeToPlace(type)
+          useCanvasTools.getState().setActiveTool("ADD_NODE")
+          canvasFSMActor.send({ type: "START_PLACING_NODE" })
+        } else if (key === "c") {
+          useCanvasTools.getState().setActiveTool("CONNECT")
+          canvasFSMActor.send({ type: "START_CONNECT" })
+        } else if (key === "k") {
+          useCanvasTools.getState().setActiveTool("AI_PROMPT")
+        } else if (key === "t" || key === "w") {
           useCanvasTools.getState().setActiveTool("GIZMO_TRANSLATE")
         } else if (key === "r" || key === "e") {
           useCanvasTools.getState().setActiveTool("GIZMO_ROTATE")

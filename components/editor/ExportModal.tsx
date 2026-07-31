@@ -18,7 +18,8 @@ import { generateArchitectureMarkdown, downloadMarkdownFile } from "@/lib/markdo
 
 export function ExportModal() {
   const [isOpen, setIsOpen] = useState(false);
-  const { nodes, edges } = useCanvasStore();
+  const nodes = useCanvasStore((s) => s.nodes);
+  const edges = useCanvasStore((s) => s.edges);
 
   const handleExportPNG = () => {
     captureCanvasSnapshot({ transparent: false });

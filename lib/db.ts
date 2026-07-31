@@ -1,10 +1,5 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { PrismaNeon } from '@prisma/adapter-neon';
-import { PrismaClient } from '../app/generated/prisma';
-import ws from 'ws';
-
-// Setup WebSocket for serverless environment if not in edge runtime
-neonConfig.webSocketConstructor = ws;
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from './generated/prisma/client';
 
 const prismaClientSingleton = () => {
   const connectionString = process.env.DATABASE_URL?.replace(/^"|"$/g, '');
@@ -12,8 +7,15 @@ const prismaClientSingleton = () => {
     throw new Error("DATABASE_URL environment variable is not set");
   }
 
-  const pool = new Pool({ connectionString });
-  const adapter = new PrismaNeon(pool as unknown as ConstructorParameters<typeof PrismaNeon>[0]);
+  const adapter = new PrismaPg({
+    connectionString,
+    max: 10,
+    connectionTimeoutMillis: 20_000,
+    idleTimeoutMillis: 30_000,
+    query_timeout: 30_000,
+    statement_timeout: 30_000,
+    ssl: { rejectUnauthorized: false },
+  });
 
   return new PrismaClient({ adapter });
 };

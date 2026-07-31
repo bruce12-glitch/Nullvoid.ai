@@ -1,6 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { getLiveblocks, getUserColor } from "@/lib/liveblocks";
-import { db } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
+import { isEmailCollaborator } from "@/lib/project-collaborators";
 
 export async function POST(request: Request) {
   const user = await currentUser();
@@ -9,23 +10,42 @@ export async function POST(request: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const { room } = await request.json(); // room is the projectId
+  let room: string;
+  try {
+    const body = await request.json();
+    room = body.room;
+  } catch {
+    return new Response("Invalid JSON body", { status: 400 });
+  }
 
   if (!room || typeof room !== "string") {
     return new Response("Bad Request", { status: 400 });
   }
 
-  const project = await db.project.findUnique({
+  const project = await prisma.project.findUnique({
     where: { id: room },
+    select: { id: true, ownerId: true },
   });
 
-  if (!project || project.userId !== user.id) {
+  if (!project) {
+    return new Response("Forbidden", { status: 403 });
+  }
+
+  const isOwner = project.ownerId === user.id;
+  const email = user.primaryEmailAddress?.emailAddress;
+  const isCollab = !isOwner && email ? await isEmailCollaborator(room, email) : false;
+
+  if (!isOwner && !isCollab) {
     return new Response("Forbidden", { status: 403 });
   }
 
   const lb = getLiveblocks();
 
-  await lb.getOrCreateRoom(room, { defaultAccesses: [] });
+  try {
+    await lb.getOrCreateRoom(room, { defaultAccesses: [] });
+  } catch {
+    return new Response("Failed to access Liveblocks room", { status: 502 });
+  }
 
   const name =
     user?.fullName ??
@@ -40,6 +60,10 @@ export async function POST(request: Request) {
 
   session.allow(room, session.FULL_ACCESS);
 
-  const { status, body } = await session.authorize();
-  return new Response(body, { status });
+  try {
+    const { status, body } = await session.authorize();
+    return new Response(body, { status });
+  } catch {
+    return new Response("Authorization failed", { status: 502 });
+  }
 }

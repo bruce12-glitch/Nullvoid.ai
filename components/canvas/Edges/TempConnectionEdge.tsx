@@ -6,7 +6,9 @@ import { QuadraticBezierLine } from "@react-three/drei";
 import { useCanvasStore } from "@/stores/useCanvasStore";
 
 export function TempConnectionEdge() {
-  const { drawingEdgeSource, cursor3D, nodes } = useCanvasStore();
+  const drawingEdgeSource = useCanvasStore((s) => s.drawingEdgeSource);
+  const cursor3D = useCanvasStore((s) => s.cursor3D);
+  const nodes = useCanvasStore((s) => s.nodes);
 
   const sourceNode = useMemo(() => {
     if (!drawingEdgeSource) return null;

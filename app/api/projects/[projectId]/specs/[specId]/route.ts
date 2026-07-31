@@ -1,4 +1,3 @@
-import { get } from "@vercel/blob"
 import { prisma } from "@/lib/prisma"
 import { getCurrentProjectIdentity, userHasProjectAccess } from "@/lib/project-access"
 import type { NextRequest } from "next/server"
@@ -15,16 +14,13 @@ export async function GET(
   const hasAccess = await userHasProjectAccess(projectId, identity)
   if (!hasAccess) return Response.json({ error: "Not found" }, { status: 404 })
 
-  const record = await prisma.spec.findUnique({
+  const record = await prisma.projectSpec.findFirst({
     where: { id: specId, projectId },
   })
 
-  if (!record || !record.content) {
+  if (!record) {
     return Response.json({ error: "Not found" }, { status: 404 })
   }
 
-  return new Response(record.content, {
-    status: 200,
-    headers: { "Content-Type": "text/markdown; charset=utf-8" },
-  })
+  return Response.json({ id: record.id, filePath: record.filePath, createdAt: record.createdAt })
 }

@@ -5,7 +5,7 @@ const publicPaths = [
   "/sign-in",
   "/sign-up",
   "/api/health",
-  "/api/webhooks",
+  "/api/webhooks/clerk",
 ]
 
 export default clerkMiddleware(async (auth, request) => {

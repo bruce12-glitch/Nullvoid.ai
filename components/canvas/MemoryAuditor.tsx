@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useThree, useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 
 export function MemoryAuditor() {
   const gl = useThree((state) => state.gl);
+  const lastUpdate = useRef(0);
   const [stats, setStats] = useState({
     geometries: 0,
     textures: 0,
@@ -14,15 +15,16 @@ export function MemoryAuditor() {
   });
 
   useFrame(() => {
-    // Throttle React state updates to prevent excessive re-renders
-    if (Date.now() % 500 < 20) {
-      setStats({
-        geometries: gl.info.memory.geometries,
-        textures: gl.info.memory.textures,
-        drawCalls: gl.info.render.calls,
-        triangles: gl.info.render.triangles,
-      });
-    }
+    const now = Date.now();
+    if (now - lastUpdate.current < 500) return;
+    lastUpdate.current = now;
+
+    setStats({
+      geometries: gl.info.memory.geometries,
+      textures: gl.info.memory.textures,
+      drawCalls: gl.info.render.calls,
+      triangles: gl.info.render.triangles,
+    });
   });
 
   // Only render in development environments to prevent production UI clutter

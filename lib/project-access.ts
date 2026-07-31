@@ -1,5 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server"
 import { prisma } from "@/lib/prisma"
+import { isEmailCollaborator } from "@/lib/project-collaborators"
 
 export interface ProjectIdentity {
   userId: string | null
@@ -16,11 +17,11 @@ export async function getCurrentProjectIdentity(): Promise<ProjectIdentity> {
     }
   }
 
-  // We intentionally do not fetch `currentUser()` here to avoid a 300ms+ network delay
-  // from Clerk's servers on every page load, as primaryEmailAddress is unused for querying projects.
+  const user = await currentUser()
+
   return {
     userId,
-    primaryEmailAddress: null,
+    primaryEmailAddress: user?.primaryEmailAddress?.emailAddress ?? null,
   }
 }
 
@@ -30,12 +31,20 @@ export async function getAccessibleProject(
 ) {
   if (!identity.userId) return null
 
-  return prisma.project.findFirst({
-    where: {
-      id: projectId,
-      userId: identity.userId,
-    },
+  const project = await prisma.project.findFirst({
+    where: { id: projectId },
+    select: { id: true, ownerId: true, name: true, description: true, status: true, canvasBlobUrl: true, createdAt: true, updatedAt: true },
   })
+
+  if (!project) return null
+  if (project.ownerId === identity.userId) return project
+
+  if (identity.primaryEmailAddress) {
+    const isCollab = await isEmailCollaborator(projectId, identity.primaryEmailAddress)
+    if (isCollab) return project
+  }
+
+  return null
 }
 
 export async function userHasProjectAccess(

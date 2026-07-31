@@ -5,7 +5,7 @@ import { SystemEdge } from "./SystemEdge";
 import { TempConnectionEdge } from "./TempConnectionEdge";
 
 export function EdgeLayer() {
-  const { edges } = useCanvasStore();
+  const edges = useCanvasStore((s) => s.edges);
 
   return (
     <group>

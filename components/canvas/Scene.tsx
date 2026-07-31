@@ -1,10 +1,8 @@
 "use client";
 
-import { Suspense } from "react";
 import { Grid } from "@react-three/drei";
 import { StageEnvironment } from "./Environment";
-import { CanvasLoader } from "./CanvasLoader";
-import { RobotNode } from "./Nodes/RobotNode";
+import { SystemNode } from "./Nodes/SystemNode";
 import { useCanvasPreferences } from "@/hooks/useCanvasPreferences";
 import { CanvasContainer } from "./CanvasContainer";
 import { Camera } from "./Camera";
@@ -13,6 +11,7 @@ import { CanvasPerformance } from "./CanvasPerformance";
 import { InstancedNodes } from "./Performance/InstancedNodes";
 import { TransformGizmo } from "./TransformGizmo";
 import { EdgeLayer } from "./Edges/EdgeLayer";
+import { TempConnectionEdge } from "./Edges/TempConnectionEdge";
 import { MemoryAuditor } from "./MemoryAuditor";
 import { FSMDebugger } from "./FSMDebugger";
 import { CanvasTelemetry } from "./CanvasTelemetry";
@@ -24,7 +23,8 @@ import { useLiveblocksDownstreamSync } from "@/hooks/useLiveblocksCanvasSync";
 export function Scene() {
   const { showGrid } = useCanvasPreferences();
   const { state, send } = useCanvasFSM();
-  const { clearSelection } = useCanvasStore();
+  const nodes = useCanvasStore((s) => s.nodes);
+  const clearSelection = useCanvasStore((s) => s.clearSelection);
   
   // Bind downstream Liveblocks CRDT mutations -> local Zustand store
   useLiveblocksDownstreamSync();
@@ -37,13 +37,16 @@ export function Scene() {
 
   return (
     <CanvasContainer>
-      <Camera 
-        // We'd ideally pass disabled state to Camera if it manages OrbitControls
-      />
+      <Camera />
       <StageEnvironment />
 
       {/* Invisible interaction ground plane for raycasting & deselection */}
       <BaseCanvas />
+
+      {/* Architecture Nodes from store */}
+      {nodes.map((node) => (
+        <SystemNode key={node.id} node={node} />
+      ))}
 
       {/* Instanced background nodes for high FPS */}
       <InstancedNodes />
@@ -53,6 +56,7 @@ export function Scene() {
 
       {/* Edges & Connections */}
       <EdgeLayer />
+      <TempConnectionEdge />
 
       {/* Real-time Presence Cursors */}
       <MultiplayerCursors />
@@ -68,16 +72,16 @@ export function Scene() {
         <Grid 
           infiniteGrid 
           fadeDistance={30} 
-          cellColor="#27272a" 
-          sectionColor="#3f3f46" 
+          cellColor="#00c8d4" 
+          cellThickness={0.5}
+          cellSize={1}
+          sectionColor="#6457f9" 
+          sectionThickness={1}
           sectionSize={5}
+          fadeStrength={1.5}
           position={[0, -0.01, 0]} 
         />
       )}
-
-      <Suspense fallback={<CanvasLoader />}>
-        <RobotNode />
-      </Suspense>
     </CanvasContainer>
   );
 }

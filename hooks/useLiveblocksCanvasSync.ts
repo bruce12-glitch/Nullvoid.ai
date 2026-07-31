@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useStorage, useMutation } from "@liveblocks/react/suspense";
+import { useEffect } from "react";
+import { useStorage, useMutation } from "@liveblocks/react";
 import { LiveObject } from "@liveblocks/client";
 import { useCanvasStore } from "@/stores/useCanvasStore";
-import type { CanvasNode, CanvasEdge, Position3D, Rotation3D } from "@/types/canvas";
+import type { CanvasNode, CanvasEdge } from "@/types/canvas";
 
 /**
  * Hook to bind Liveblocks CRDT storage to local Zustand store.
@@ -13,32 +13,31 @@ import type { CanvasNode, CanvasEdge, Position3D, Rotation3D } from "@/types/can
 export function useLiveblocksDownstreamSync() {
   const liveNodes = useStorage((root) => root.nodes);
   const liveEdges = useStorage((root) => root.edges);
-  
+
   const setNodes = useCanvasStore((s) => s.setNodes);
   const setEdges = useCanvasStore((s) => s.setEdges);
 
-  // When remote nodes change, hydrate Zustand
+  // Liveblocks 3.18: useStorage returns plain JSON objects for LiveMap values
+  // (not Map instances). Convert via Object.values() to hydrate the local store.
   useEffect(() => {
     if (!liveNodes) return;
-    // Liveblocks useStorage unwraps LiveMap into a readonly JSON object.
-    const nodesArray = Object.values(liveNodes).map((liveObj) => {
-      return liveObj as unknown as CanvasNode;
-    });
+    const nodesArray = Object.values(liveNodes) as CanvasNode[];
     setNodes(nodesArray);
   }, [liveNodes, setNodes]);
 
   // When remote edges change, hydrate Zustand
   useEffect(() => {
     if (!liveEdges) return;
-    const edgesArray = Object.values(liveEdges).map((liveObj) => {
-      return liveObj as unknown as CanvasEdge;
-    });
+    const edgesArray = Object.values(liveEdges) as CanvasEdge[];
     setEdges(edgesArray);
   }, [liveEdges, setEdges]);
 }
 
 /**
  * CRDT Mutations
+ *
+ * These hooks MUST be used inside a <RoomProvider>. They call useMutation
+ * unconditionally to satisfy the Rules of Hooks.
  */
 
 export function useInsertNodeCRDT() {
@@ -62,7 +61,7 @@ export function useDeleteNodesCRDT() {
   return useMutation(({ storage }, nodeIds: string[]) => {
     const nodesMap = storage.get("nodes");
     const edgesMap = storage.get("edges");
-    
+
     // Delete nodes
     nodeIds.forEach((id) => {
       nodesMap.delete(id);
@@ -72,7 +71,7 @@ export function useDeleteNodesCRDT() {
     const edgesToDelete: string[] = [];
     edgesMap.forEach((edge, edgeId) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const e = (edge as any).toObject();
+      const e = (edge as any).toObject() as CanvasEdge;
       if (nodeIds.includes(e.sourceNodeId) || nodeIds.includes(e.targetNodeId)) {
         edgesToDelete.push(edgeId);
       }
@@ -108,5 +107,28 @@ export function useUpdateEdgeCRDT() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       liveEdge.update(updates as any);
     }
+  }, []);
+}
+
+/**
+ * Replaces the entire CRDT canvas (nodes + edges) with the given arrays.
+ * Used by undo/redo so history state is fully collaborative.
+ */
+export function useReplaceStorageCRDT() {
+  return useMutation(({ storage }, nodes: CanvasNode[], edges: CanvasEdge[]) => {
+    const nodesMap = storage.get("nodes");
+    const edgesMap = storage.get("edges");
+
+    nodesMap.forEach((_, id) => nodesMap.delete(id));
+    nodes.forEach((node) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      nodesMap.set(node.id, new LiveObject(node as any));
+    });
+
+    edgesMap.forEach((_, id) => edgesMap.delete(id));
+    edges.forEach((edge) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      edgesMap.set(edge.id, new LiveObject(edge as any));
+    });
   }, []);
 }

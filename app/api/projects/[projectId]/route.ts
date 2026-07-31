@@ -13,24 +13,31 @@ export async function PATCH(
 
   const { projectId } = await ctx.params
 
-  const project = await prisma.project.findUnique({ where: { id: projectId } })
-  if (!project) return Response.json({ error: "Not found" }, { status: 404 })
-  if (project.userId !== userId) return Response.json({ error: "Forbidden" }, { status: 403 })
+  try {
+    const project = await prisma.project.findUnique({ where: { id: projectId } })
+    if (!project) return Response.json({ error: "Not found" }, { status: 404 })
+    if (project.ownerId !== userId) return Response.json({ error: "Forbidden" }, { status: 403 })
+  } catch {
+    return Response.json({ error: "Failed to access project" }, { status: 500 })
+  }
 
   const body: unknown = await request.json().catch(() => ({}))
-  const title =
+  const name =
     typeof body === "object" && body !== null && "title" in body && typeof (body as { title: unknown }).title === "string"
       ? (body as { title: string }).title.trim()
       : undefined
 
-  if (!title) return Response.json({ error: "title is required" }, { status: 400 })
+  if (!name) return Response.json({ error: "title is required" }, { status: 400 })
 
-  const updated = await prisma.project.update({
-    where: { id: projectId },
-    data: { title },
-  })
-
-  return Response.json({ project: updated })
+  try {
+    const updated = await prisma.project.update({
+      where: { id: projectId },
+      data: { name },
+    })
+    return Response.json({ project: updated })
+  } catch {
+    return Response.json({ error: "Failed to update project" }, { status: 500 })
+  }
 }
 
 export async function DELETE(
@@ -42,11 +49,18 @@ export async function DELETE(
 
   const { projectId } = await ctx.params
 
-  const project = await prisma.project.findUnique({ where: { id: projectId } })
-  if (!project) return Response.json({ error: "Not found" }, { status: 404 })
-  if (project.userId !== userId) return Response.json({ error: "Forbidden" }, { status: 403 })
+  try {
+    const project = await prisma.project.findUnique({ where: { id: projectId } })
+    if (!project) return Response.json({ error: "Not found" }, { status: 404 })
+    if (project.ownerId !== userId) return Response.json({ error: "Forbidden" }, { status: 403 })
+  } catch {
+    return Response.json({ error: "Failed to access project" }, { status: 500 })
+  }
 
-  await prisma.project.delete({ where: { id: projectId } })
-
-  return new Response(null, { status: 204 })
+  try {
+    await prisma.project.delete({ where: { id: projectId } })
+    return new Response(null, { status: 204 })
+  } catch {
+    return Response.json({ error: "Failed to delete project" }, { status: 500 })
+  }
 }

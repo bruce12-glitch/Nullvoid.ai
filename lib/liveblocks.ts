@@ -21,6 +21,16 @@ export function getUserColor(userId: string): string {
   return CURSOR_COLORS[hash];
 }
 
+function getLiveblocksSecretKey(): string {
+  const key = process.env.LIVEBLOCKS_SECRET_KEY;
+  if (!key) {
+    throw new Error(
+      "LIVEBLOCKS_SECRET_KEY is not set. Check your .env file."
+    );
+  }
+  return key;
+}
+
 const globalForLiveblocks = globalThis as unknown as {
   liveblocks: Liveblocks | undefined;
 };
@@ -28,7 +38,7 @@ const globalForLiveblocks = globalThis as unknown as {
 export function getLiveblocks(): Liveblocks {
   if (!globalForLiveblocks.liveblocks) {
     globalForLiveblocks.liveblocks = new Liveblocks({
-      secret: process.env.LIVEBLOCKS_SECRET_KEY!,
+      secret: getLiveblocksSecretKey(),
     });
   }
   return globalForLiveblocks.liveblocks;

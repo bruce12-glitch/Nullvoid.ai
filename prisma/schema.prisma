@@ -1,50 +1,62 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../app/generated/prisma"
+  output   = "../lib/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-model User {
-  id        String    @id
-  email     String    @unique
-  name      String?
-  imageUrl  String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  projects  Project[]
+enum ProjectStatus {
+  DRAFT
+  ARCHIVED
 }
 
 model Project {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  isStarred   Boolean  @default(false)
-  isArchived  Boolean  @default(false)
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  canvasData  Json?    @default("{}")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  specs       Spec[]
+  id             String                @id @default(cuid())
+  ownerId        String
+  name           String
+  description    String?
+  status         ProjectStatus         @default(DRAFT)
+  canvasBlobUrl  String?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  collaborators  ProjectCollaborator[]
+  specs          ProjectSpec[]
+
+  @@index([ownerId], name: "Project_ownerId_idx")
+  @@index([createdAt], name: "Project_createdAt_idx")
 }
 
-enum SpecStatus {
-  PENDING
-  GENERATING
-  COMPLETED
-  FAILED
-}
-
-model Spec {
-  id        String     @id @default(cuid())
+model ProjectCollaborator {
+  id        String   @id @default(cuid())
   projectId String
-  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  title     String
-  content   String     @db.Text
-  status    SpecStatus @default(PENDING)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  email     String
+  createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, email], name: "ProjectCollaborator_projectId_email_key")
+  @@index([email], name: "ProjectCollaborator_email_idx")
+  @@index([projectId, createdAt], name: "ProjectCollaborator_projectId_createdAt_idx")
+}
+
+model TaskRun {
+  id        String   @id @default(cuid())
+  runId     String   @unique
+  projectId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@index([runId], name: "TaskRun_runId_idx")
+  @@index([userId, projectId], name: "TaskRun_userId_projectId_idx")
+}
+
+model ProjectSpec {
+  id        String   @id @default(cuid())
+  projectId String
+  filePath  String
+  createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId], name: "ProjectSpec_projectId_idx")
 }

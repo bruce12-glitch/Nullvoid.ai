@@ -30,7 +30,6 @@ export function applyDeltaPatches(patches: DeltaPatch[]): void {
           // Required by XYFlow Node type but not used in 3D
           data: { label: patch.node.label },
           // Mark as freshly added for highlight animation
-          // @ts-ignore
           _justAdded: true,
         };
         addNode(newNode);
@@ -81,13 +80,13 @@ export function applyDeltaPatches(patches: DeltaPatch[]): void {
  * Returns true if revert was possible, false if no history.
  */
 export function revertLastPatch(): boolean {
-  const { popSnapshot } = useCanvasHistory.getState();
-  const { setNodes, setEdges } = useCanvasStore.getState();
+  const { undo } = useCanvasHistory.getState();
+  const { nodes, edges, setNodes, setEdges } = useCanvasStore.getState();
 
-  const snapshot = popSnapshot();
-  if (!snapshot) return false;
+  const restored = undo(nodes, edges);
+  if (!restored) return false;
 
-  setNodes(snapshot.nodes);
-  setEdges(snapshot.edges);
+  setNodes(restored.nodes);
+  setEdges(restored.edges);
   return true;
 }

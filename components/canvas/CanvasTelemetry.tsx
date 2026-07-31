@@ -10,8 +10,7 @@ const FPS_SAMPLE_WINDOW = 60;
 export function CanvasTelemetry() {
   const gl = useThree((state) => state.gl);
   const frames = useRef(0);
-  const lastReport = useRef(performance.now());
-  const lastFpsTime = useRef(performance.now());
+  const lastFpsTime = useRef(0);
   const fpsBuffer = useRef<number[]>([]);
   const peakGeometries = useRef(0);
   const peakTextures = useRef(0);

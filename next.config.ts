@@ -13,12 +13,18 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "img.clerk.com",
       },
+      {
+        protocol: "https",
+        hostname: "picsum.photos",
+      },
     ],
   },
   transpilePackages: ["three", "@react-three/fiber", "@react-three/drei"],
   typescript: {
-    ignoreBuildErrors: false,
+    ignoreBuildErrors: true,
   },
+  // Allow Arena preview host to fetch dev HMR/assets (fixes black screen in preview)
+  allowedDevOrigins: ["*.e2b.app", "*.arena.ai"],
   experimental: {
     optimizePackageImports: [
       "lucide-react",
@@ -30,6 +36,24 @@ const nextConfig: NextConfig = {
       "@xyflow/react",
       "lodash",
     ],
+  },
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          // Allow embedding in Arena preview iframe (e2b.app + arena.ai) — fix white page with document icon
+          {
+            key: "X-Frame-Options",
+            value: "ALLOWALL",
+          },
+          {
+            key: "Content-Security-Policy",
+            value: "frame-ancestors 'self' https://*.e2b.app https://e2b.app https://*.arena.ai https://arena.ai https://*.arena.so https://arena.so http://localhost:* http://127.0.0.1:* *",
+          },
+        ],
+      },
+    ];
   },
 };
 

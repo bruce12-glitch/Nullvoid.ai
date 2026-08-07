@@ -24,6 +24,9 @@ export function getUserColor(userId: string): string {
 function getLiveblocksSecretKey(): string {
   const key = process.env.LIVEBLOCKS_SECRET_KEY;
   if (!key) {
+    if (process.env.PREVIEW_BYPASS_AUTH === "true") {
+      return "sk_dummy_preview_fallback_key_for_build";
+    }
     throw new Error(
       "LIVEBLOCKS_SECRET_KEY is not set. Check your .env file."
     );

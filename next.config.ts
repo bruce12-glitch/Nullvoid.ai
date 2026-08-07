@@ -42,14 +42,14 @@ const nextConfig: NextConfig = {
       {
         source: "/(.*)",
         headers: [
-          // Allow embedding in Arena preview iframe (e2b.app)
+          // Allow embedding in Arena preview iframe (e2b.app + arena.ai) — fix white page with document icon
           {
             key: "X-Frame-Options",
             value: "ALLOWALL",
           },
           {
             key: "Content-Security-Policy",
-            value: "frame-ancestors 'self' https://*.e2b.app https://*.arena.ai http://localhost:* http://127.0.0.1:*",
+            value: "frame-ancestors 'self' https://*.e2b.app https://e2b.app https://*.arena.ai https://arena.ai https://*.arena.so https://arena.so http://localhost:* http://127.0.0.1:* *",
           },
         ],
       },

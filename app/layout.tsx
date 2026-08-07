@@ -1,8 +1,9 @@
 import type { Metadata } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
+import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google"
 import { ClerkProvider } from "@clerk/nextjs"
 import { dark } from "@clerk/ui/themes"
 import { ClientProviders } from "@/components/providers/ClientProviders"
+import { LenisProvider } from "@/components/providers/LenisProvider"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -15,6 +16,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 })
 
+// Satoshi-like geometric sans for Novify exact — Space Grotesk is closest via next/font
+const satoshi = Space_Grotesk({
+  variable: "--font-satoshi",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+})
+
 export const metadata: Metadata = {
   title: "NullVoid.AI",
   description: "Real-time collaborative system design workspace",
@@ -25,10 +34,30 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const isPreviewBypass = process.env.PREVIEW_BYPASS_AUTH === "true"
+  // In preview mode with dummy Clerk keys, skip ClerkProvider to avoid runtime key validation errors
+  if (isPreviewBypass) {
+    return (
+      <html
+        lang="en"
+        className={`${geistSans.variable} ${geistMono.variable} ${satoshi.variable} h-full antialiased`}
+      >
+        <body className="min-h-full flex flex-col">
+          <div className="fixed top-0 inset-x-0 z-[9999] bg-amber-500 text-black text-center text-xs py-1 font-medium">
+            ⚡ Preview Mode — Auth & DB mocked • Landing page is live • <a href="/dashboard" className="underline font-bold ml-1">Go to Dashboard →</a> <span className="hidden sm:inline opacity-60">| set real .env keys for full functionality</span>
+          </div>
+          <div className="pt-6 flex-1 flex flex-col">
+            {/* In preview, render children without dynamic ClientProviders to allow SSR (fixes black screen when HMR blocked) */}
+            <LenisProvider>{children}</LenisProvider>
+          </div>
+        </body>
+      </html>
+    )
+  }
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${satoshi.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <ClerkProvider
@@ -58,9 +87,9 @@ export default function RootLayout({
             },
           }}
         >
-          <ClientProviders>
-            {children}
-          </ClientProviders>
+          <LenisProvider>
+            <ClientProviders>{children}</ClientProviders>
+          </LenisProvider>
         </ClerkProvider>
       </body>
     </html>

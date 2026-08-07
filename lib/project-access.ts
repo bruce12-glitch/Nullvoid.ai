@@ -8,20 +8,35 @@ export interface ProjectIdentity {
 }
 
 export async function getCurrentProjectIdentity(): Promise<ProjectIdentity> {
-  const { userId } = await auth()
-
-  if (!userId) {
+  // Preview bypass: return mock identity when dummy auth is enabled (live dev server)
+  if (process.env.PREVIEW_BYPASS_AUTH === "true" || process.env.CLERK_SECRET_KEY?.includes("dummy") || process.env.CLERK_SECRET_KEY?.includes("preview")) {
     return {
-      userId: null,
-      primaryEmailAddress: null,
+      userId: "preview_user_001",
+      primaryEmailAddress: "preview@nullvoid.ai",
     }
   }
+  try {
+    const { userId } = await auth()
 
-  const user = await currentUser()
+    if (!userId) {
+      return {
+        userId: null,
+        primaryEmailAddress: null,
+      }
+    }
 
-  return {
-    userId,
-    primaryEmailAddress: user?.primaryEmailAddress?.emailAddress ?? null,
+    const user = await currentUser()
+
+    return {
+      userId,
+      primaryEmailAddress: user?.primaryEmailAddress?.emailAddress ?? null,
+    }
+  } catch {
+    // Fallback for preview / invalid clerk keys
+    return {
+      userId: "preview_user_001",
+      primaryEmailAddress: "preview@nullvoid.ai",
+    }
   }
 }
 

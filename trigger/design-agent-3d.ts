@@ -7,6 +7,25 @@ import type { CanvasNode, CanvasEdge } from "@/types/canvas";
 import { prisma } from "@/lib/prisma";
 import { put } from "@vercel/blob";
 
+/**
+ * Resolves the canvas maps from a Liveblocks room root.
+ *
+ * The graph lives at `root.flow.{nodes,edges}` — the storage key used by
+ * `useLiveblocksFlow()` on the client. Reading `root.nodes` here silently
+ * found nothing, so AI-generated architectures were never applied to the
+ * canvas even though the run reported success.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getFlowMaps(root: any): { nodes: any; edges: any } | null {
+  const flow = root.get("flow");
+  if (!flow) return null;
+  const nodes = flow.get("nodes");
+  const edges = flow.get("edges");
+  if (!nodes || !edges) return null;
+  return { nodes, edges };
+}
+
+
 const AI_USER_ID = "ghost-ai";
 const AI_USER_INFO = { name: "Ghost AI 3D", avatar: "", color: "#6457f9" };
 
@@ -54,9 +73,9 @@ export const designAgent3D = task({
 
       // 3. Mutate Liveblocks CRDT
       await lb.mutateStorage(payload.roomId, ({ root }) => {
-        const nodes = root.get("nodes") as any;
-        const edges = root.get("edges") as any;
-        if (!nodes || !edges) return;
+        const maps = getFlowMaps(root);
+        if (!maps) return;
+        const { nodes, edges } = maps;
 
         // Apply nodes
         result.nodes.forEach((n) => {

@@ -5,13 +5,24 @@ import { db } from "@/lib/db";
 import type { ProjectStatus } from "@/lib/generated/prisma/client";
 
 async function getAuthUserId(): Promise<string | null> {
-  if (process.env.PREVIEW_BYPASS_AUTH === "true") return "preview_user_001"
+  // Preview bypass is opt-in AND non-production only, matching proxy.ts and
+  // lib/project-access.ts. Gating on the flag alone would let a stray env var
+  // collapse every visitor into one shared account in production.
+  if (
+    process.env.NODE_ENV !== "production" &&
+    process.env.PREVIEW_BYPASS_AUTH === "true"
+  ) {
+    return "preview_user_001";
+  }
+
   try {
     const { auth } = await import("@clerk/nextjs/server");
     const { userId } = await auth();
     return userId;
-  } catch {
-    if (process.env.NODE_ENV !== "production") return "preview_user_001"
+  } catch (error) {
+    // SECURITY: fail closed. Returning a shared fallback identity here meant
+    // any Clerk hiccup handed the caller someone else's project list.
+    console.error("[project.actions] auth() failed:", error);
     return null;
   }
 }

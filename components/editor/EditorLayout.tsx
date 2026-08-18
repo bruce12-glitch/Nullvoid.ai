@@ -14,6 +14,7 @@ import { ChatPanel } from "@/components/editor/ChatPanel";
 import { useCanvasStore } from "@/stores/useCanvasStore";
 import { useCanvasHistory } from "@/stores/useCanvasHistory";
 import { useReplaceStorageCRDT } from "@/hooks/useLiveblocksCanvasSync";
+import { CanvasPersistence } from "@/components/canvas/CanvasPersistence";
 
 interface EditorLayoutProps {
   children: React.ReactNode; // The 3D Canvas
@@ -49,6 +50,9 @@ export function EditorLayout({ children, projectId }: EditorLayoutProps) {
   
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-bg-base selection:bg-accent-primary/20">
+      {/* Load + autosave the 3D canvas (renders nothing) */}
+      <CanvasPersistence projectId={projectId} />
+
       {/* Ambient lighting with multiple layers */}
       <div className="fixed inset-0 pointer-events-none">
         {/* Primary accent glow */}

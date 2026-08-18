@@ -28,7 +28,7 @@ export function CanvasEdgeComponent({
   const [draftLabel, setDraftLabel] = useState("")
 
   const updateEdgeLabel = useMutation(({ storage }, newLabel: string) => {
-    const edge = storage.get("edges")?.get(id)
+    const edge = storage.get("flow")?.get("edges")?.get(id)
     if (!edge) return
     const liveData = (edge as unknown as LiveEdgeData).get("data")
     if (liveData) liveData.set("label", newLabel)

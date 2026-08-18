@@ -119,13 +119,13 @@ export function CanvasNodeComponent({ id, data, selected }: NodeProps<CanvasNode
   const editRef = useRef<HTMLDivElement>(null)
 
   const updateNodeLabel = useMutation(({ storage }, newLabel: string) => {
-    const node = storage.get("nodes")?.get(id)
+    const node = storage.get("flow")?.get("nodes")?.get(id)
     if (!node) return
     ;(node as unknown as LiveNodeData).get("data").set("label", newLabel)
   }, [id])
 
   const updateNodeColor = useMutation(({ storage }, colorFill: string, colorText: string) => {
-    const node = storage.get("nodes")?.get(id)
+    const node = storage.get("flow")?.get("nodes")?.get(id)
     if (!node) return
     const liveData = (node as unknown as LiveNodeData).get("data")
     liveData.set("color", colorFill)

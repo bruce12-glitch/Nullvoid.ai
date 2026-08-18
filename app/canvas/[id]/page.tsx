@@ -29,8 +29,7 @@ export default function CanvasWorkspacePage({ params }: { params: Promise<{ id: 
         id={id}
         initialPresence={{ cursor: null, selectedNodeId: null, isThinking: false, thinking: false }}
         initialStorage={{
-          nodes: new LiveMap(),
-          edges: new LiveMap(),
+          flow: new LiveObject({ nodes: new LiveMap(), edges: new LiveMap() }),
           systemMetadata: new LiveObject({ title: "Architecture", updatedAt: new Date().toISOString() }),
         }}
       >

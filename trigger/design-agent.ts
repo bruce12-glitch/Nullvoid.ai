@@ -8,6 +8,25 @@ import { getLiveblocks } from "@/lib/liveblocks";
 import { NODE_COLORS, SHAPE_DEFAULTS, NODE_SHAPES } from "@/types/canvas";
 import type { CanvasNode, CanvasEdge, NodeShape } from "@/types/canvas";
 
+/**
+ * Resolves the canvas maps from a Liveblocks room root.
+ *
+ * The graph lives at `root.flow.{nodes,edges}` — the storage key used by
+ * `useLiveblocksFlow()` on the client. Reading `root.nodes` here silently
+ * found nothing, so AI-generated architectures were never applied to the
+ * canvas even though the run reported success.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getFlowMaps(root: any): { nodes: any; edges: any } | null {
+  const flow = root.get("flow");
+  if (!flow) return null;
+  const nodes = flow.get("nodes");
+  const edges = flow.get("edges");
+  if (!nodes || !edges) return null;
+  return { nodes, edges };
+}
+
+
 const AI_USER_ID = "ghost-ai";
 const AI_USER_INFO = { name: "Ghost AI", avatar: "", color: "#6457f9" };
 
@@ -221,9 +240,9 @@ export const designAgent = task({
       let storageApplied = false;
 
       await lb.mutateStorage(payload.roomId, ({ root }) => {
-        const nodes = root.get("nodes");
-        const edges = root.get("edges");
-        if (!nodes || !edges) return;
+        const maps = getFlowMaps(root);
+        if (!maps) return;
+        const { nodes, edges } = maps;
 
         storageApplied = true;
         for (const call of actionCalls) {

@@ -7,14 +7,29 @@ export interface ProjectIdentity {
   primaryEmailAddress: string | null
 }
 
+/**
+ * True only for a local, non-production preview that has explicitly opted in.
+ *
+ * SECURITY: this is deliberately strict. It is NOT enough to set the flag —
+ * the build must also not be a production build. Previously this also matched
+ * on `CLERK_SECRET_KEY.includes("dummy"|"preview")`, which meant a stray or
+ * placeholder key silently collapsed every visitor into one shared account.
+ */
+export function isPreviewAuthBypass(): boolean {
+  return (
+    process.env.NODE_ENV !== "production" &&
+    process.env.PREVIEW_BYPASS_AUTH === "true"
+  )
+}
+
 export async function getCurrentProjectIdentity(): Promise<ProjectIdentity> {
-  // Preview bypass: return mock identity when dummy auth is enabled (live dev server)
-  if (process.env.PREVIEW_BYPASS_AUTH === "true" || process.env.CLERK_SECRET_KEY?.includes("dummy") || process.env.CLERK_SECRET_KEY?.includes("preview")) {
+  if (isPreviewAuthBypass()) {
     return {
       userId: "preview_user_001",
       primaryEmailAddress: "preview@nullvoid.ai",
     }
   }
+
   try {
     const { userId } = await auth()
 
@@ -31,11 +46,15 @@ export async function getCurrentProjectIdentity(): Promise<ProjectIdentity> {
       userId,
       primaryEmailAddress: user?.primaryEmailAddress?.emailAddress ?? null,
     }
-  } catch {
-    // Fallback for preview / invalid clerk keys
+  } catch (error) {
+    // SECURITY: fail CLOSED. This used to return a shared "preview_user_001"
+    // identity, so any Clerk outage or misconfiguration in production would
+    // hand every anonymous visitor the same authenticated account — and with
+    // it, read/write access to that account's projects.
+    console.error("[project-access] Clerk identity resolution failed:", error)
     return {
-      userId: "preview_user_001",
-      primaryEmailAddress: "preview@nullvoid.ai",
+      userId: null,
+      primaryEmailAddress: null,
     }
   }
 }

@@ -3,16 +3,43 @@
 import { useEffect } from "react";
 import { useStorage, useMutation } from "@liveblocks/react";
 import { LiveObject } from "@liveblocks/client";
+import type { LiveMap } from "@liveblocks/client";
 import { useCanvasStore } from "@/stores/useCanvasStore";
 import type { CanvasNode, CanvasEdge } from "@/types/canvas";
+
+/**
+ * Resolves the `flow` subtree that holds the canvas graph.
+ *
+ * The graph lives at `root.flow.{nodes,edges}` because `useLiveblocksFlow()`
+ * uses storage key "flow" by default. `flow` is created by RoomProvider's
+ * `initialStorage`, but a room persisted before that seed existed may not
+ * have it yet — so callers must tolerate `null` rather than assume.
+ */
+// Derive the map types from the global Storage declaration so this stays in
+// sync with liveblocks.config.ts and satisfies Liveblocks' Lson constraints.
+type FlowObject = Liveblocks["Storage"]["flow"];
+type FlowFields = FlowObject extends LiveObject<infer F> ? F : never;
+type LiveNodeMap = FlowFields["nodes"];
+type LiveEdgeMap = FlowFields["edges"];
+
+function getFlowMaps(
+  storage: LiveObject<Liveblocks["Storage"]>
+): { nodes: LiveNodeMap; edges: LiveEdgeMap } | null {
+  const flow = storage.get("flow");
+  if (!flow) return null;
+  const nodes = flow.get("nodes");
+  const edges = flow.get("edges");
+  if (!nodes || !edges) return null;
+  return { nodes, edges };
+}
 
 /**
  * Hook to bind Liveblocks CRDT storage to local Zustand store.
  * Mount this exactly once (e.g. in Scene.tsx).
  */
 export function useLiveblocksDownstreamSync() {
-  const liveNodes = useStorage((root) => root.nodes);
-  const liveEdges = useStorage((root) => root.edges);
+  const liveNodes = useStorage((root) => root.flow?.nodes ?? null);
+  const liveEdges = useStorage((root) => root.flow?.edges ?? null);
 
   const setNodes = useCanvasStore((s) => s.setNodes);
   const setEdges = useCanvasStore((s) => s.setEdges);
@@ -43,13 +70,13 @@ export function useLiveblocksDownstreamSync() {
 export function useInsertNodeCRDT() {
   return useMutation(({ storage }, node: CanvasNode) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    storage.get("nodes").set(node.id, new LiveObject(node as any));
+    getFlowMaps(storage)?.nodes.set(node.id, new LiveObject(node as any));
   }, []);
 }
 
 export function useUpdateNodeCRDT() {
   return useMutation(({ storage }, nodeId: string, updates: Partial<CanvasNode>) => {
-    const liveNode = storage.get("nodes").get(nodeId);
+    const liveNode = getFlowMaps(storage)?.nodes.get(nodeId);
     if (liveNode) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       liveNode.update(updates as any);
@@ -59,8 +86,9 @@ export function useUpdateNodeCRDT() {
 
 export function useDeleteNodesCRDT() {
   return useMutation(({ storage }, nodeIds: string[]) => {
-    const nodesMap = storage.get("nodes");
-    const edgesMap = storage.get("edges");
+    const maps = getFlowMaps(storage);
+    if (!maps) return;
+    const { nodes: nodesMap, edges: edgesMap } = maps;
 
     // Delete nodes
     nodeIds.forEach((id) => {
@@ -85,7 +113,8 @@ export function useDeleteNodesCRDT() {
 
 export function useDeleteEdgesCRDT() {
   return useMutation(({ storage }, edgeIds: string[]) => {
-    const edgesMap = storage.get("edges");
+    const edgesMap = getFlowMaps(storage)?.edges;
+    if (!edgesMap) return;
     edgeIds.forEach((id) => {
       edgesMap.delete(id);
     });
@@ -95,14 +124,14 @@ export function useDeleteEdgesCRDT() {
 export function useInsertEdgeCRDT() {
   return useMutation(({ storage }, edge: CanvasEdge) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    storage.get("edges").set(edge.id, new LiveObject(edge as any));
+    getFlowMaps(storage)?.edges.set(edge.id, new LiveObject(edge as any));
   }, []);
 }
 
 export function useUpdateEdgeCRDT() {
   return useMutation(({ storage }, edgeId: string, updates: Partial<CanvasEdge>) => {
-    const edgesMap = storage.get("edges");
-    const liveEdge = edgesMap.get(edgeId);
+    const edgesMap = getFlowMaps(storage)?.edges;
+    const liveEdge = edgesMap?.get(edgeId);
     if (liveEdge) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       liveEdge.update(updates as any);
@@ -116,8 +145,9 @@ export function useUpdateEdgeCRDT() {
  */
 export function useReplaceStorageCRDT() {
   return useMutation(({ storage }, nodes: CanvasNode[], edges: CanvasEdge[]) => {
-    const nodesMap = storage.get("nodes");
-    const edgesMap = storage.get("edges");
+    const maps = getFlowMaps(storage);
+    if (!maps) return;
+    const { nodes: nodesMap, edges: edgesMap } = maps;
 
     nodesMap.forEach((_, id) => nodesMap.delete(id));
     nodes.forEach((node) => {

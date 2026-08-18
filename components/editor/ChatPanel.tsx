@@ -5,6 +5,7 @@ import { Bot, User, X, Minimize2, Maximize2, Sparkles, RotateCcw, Send } from "l
 import { useCanvasStore } from "@/stores/useCanvasStore";
 import { useCanvasHistory, } from "@/stores/useCanvasHistory";
 import { applyDeltaPatches, revertLastPatch } from "@/lib/ai/patch-applier";
+import { useReplaceStorageCRDT } from "@/hooks/useLiveblocksCanvasSync";
 import type { DeltaPatchResponse } from "@/lib/ai/canvas-differ";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -43,6 +44,7 @@ export function ChatPanel({ projectId }: { projectId?: string }) {
   const nodes = useCanvasStore((s) => s.nodes);
   const edges = useCanvasStore((s) => s.edges);
   const canUndo = useCanvasHistory((s) => s.canUndo);
+  const replaceStorageCRDT = useReplaceStorageCRDT();
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -96,8 +98,15 @@ export function ChatPanel({ projectId }: { projectId?: string }) {
       }
       const delta: DeltaPatchResponse = await res.json();
 
-      // Apply delta patches to the canvas store
+      // Apply delta patches to the local canvas store...
       applyDeltaPatches(delta.patches);
+
+      // ...then push the result into Liveblocks storage. Without this the AI's
+      // changes lived only in this browser's Zustand store: collaborators saw
+      // nothing and the edits vanished on reload, because the 3D canvas has no
+      // other write path back to the CRDT.
+      const { nodes: nextNodes, edges: nextEdges } = useCanvasStore.getState();
+      replaceStorageCRDT?.(nextNodes, nextEdges);
 
       const assistantMsg: Message = {
         id: crypto.randomUUID(),
@@ -118,11 +127,14 @@ export function ChatPanel({ projectId }: { projectId?: string }) {
     } finally {
       setIsLoading(false);
     }
-  }, [nodes, edges, projectId, isLoading]);
+  }, [nodes, edges, projectId, isLoading, replaceStorageCRDT]);
 
   const handleRevert = useCallback(() => {
     const success = revertLastPatch();
     if (success) {
+      // Mirror the revert into Liveblocks so collaborators and reloads agree.
+      const { nodes: rn, edges: re } = useCanvasStore.getState();
+      replaceStorageCRDT?.(rn, re);
       setMessages((prev) => [
         ...prev,
         {
@@ -132,7 +144,7 @@ export function ChatPanel({ projectId }: { projectId?: string }) {
         },
       ]);
     }
-  }, []);
+  }, [replaceStorageCRDT]);
 
   if (!isOpen) {
     return (

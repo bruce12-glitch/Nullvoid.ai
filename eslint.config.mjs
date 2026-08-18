@@ -14,6 +14,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "app/generated/**",
     "lib/generated/**",
+    // Trigger.dev build cache — generated bundles, not source. Linting these
+    // produced ~23,000 spurious problems and drowned out real findings.
+    ".trigger/**",
   ]),
 ]);
 

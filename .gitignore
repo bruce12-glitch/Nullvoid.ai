@@ -51,3 +51,10 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# Windows/dev scratch files that were previously committed by accident
+%TEMP%*
+kill_node.ps1
+run.ps1
+test_website.ps1
+test-db-final.ts

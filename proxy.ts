@@ -12,12 +12,19 @@ const publicPaths = [
   "/api/webhooks/clerk",
 ]
 
+/**
+ * SECURITY: preview bypass is opt-in AND non-production only.
+ *
+ * This previously also returned true when the Clerk keys merely *contained*
+ * the substring "dummy"/"preview". A placeholder key left in a production
+ * environment therefore disabled route protection for the entire app while
+ * looking perfectly normal. Route protection must never hinge on the
+ * incidental contents of a secret.
+ */
 function isPreviewBypass(): boolean {
   return (
-    process.env.PREVIEW_BYPASS_AUTH === "true" ||
-    (process.env.CLERK_SECRET_KEY?.includes("dummy") ?? false) ||
-    (process.env.CLERK_SECRET_KEY?.includes("preview") ?? false) ||
-    (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.includes("dummy") ?? false)
+    process.env.NODE_ENV !== "production" &&
+    process.env.PREVIEW_BYPASS_AUTH === "true"
   )
 }
 

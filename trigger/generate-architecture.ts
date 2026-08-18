@@ -7,6 +7,25 @@ import { applyLayoutEngine } from "@/lib/ai/layout-engine";
 import { applyCollisionAvoidance } from "@/lib/ai/collision-avoidance";
 import { put } from "@vercel/blob";
 
+/**
+ * Resolves the canvas maps from a Liveblocks room root.
+ *
+ * The graph lives at `root.flow.{nodes,edges}` — the storage key used by
+ * `useLiveblocksFlow()` on the client. Reading `root.nodes` here silently
+ * found nothing, so AI-generated architectures were never applied to the
+ * canvas even though the run reported success.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getFlowMaps(root: any): { nodes: any; edges: any } | null {
+  const flow = root.get("flow");
+  if (!flow) return null;
+  const nodes = flow.get("nodes");
+  const edges = flow.get("edges");
+  if (!nodes || !edges) return null;
+  return { nodes, edges };
+}
+
+
 const AI_USER_ID = "ghost-ai";
 const AI_USER_INFO = { name: "Ghost AI Architect", avatar: "", color: "#6457f9" };
 
@@ -55,11 +74,16 @@ export const generateArchitecture = task({
       }
 
       // 3. Invoke Gemini system architect engine
-      let result = await generateArchitectureSpec(payload.prompt, canvasContext);
+      const result = await generateArchitectureSpec(payload.prompt, canvasContext);
 
       // Apply Layout Engine and Collision Avoidance
-      result.nodes = await applyLayoutEngine(result.nodes as any, result.edges as any) as any;
-      result.nodes = applyCollisionAvoidance(result.nodes as any) as any;
+      result.nodes = (await applyLayoutEngine(
+        result.nodes as Parameters<typeof applyLayoutEngine>[0],
+        result.edges as Parameters<typeof applyLayoutEngine>[1]
+      )) as typeof result.nodes;
+      result.nodes = applyCollisionAvoidance(
+        result.nodes as Parameters<typeof applyCollisionAvoidance>[0]
+      ) as typeof result.nodes;
 
       await lb.broadcastEvent(payload.canvasId, {
         type: "ai-status",
@@ -69,9 +93,9 @@ export const generateArchitecture = task({
 
       // 4 & 5. Persist nodes/edges to Liveblocks Room Storage
       await lb.mutateStorage(payload.canvasId, ({ root }) => {
-        const nodes = root.get("nodes") as any;
-        const edges = root.get("edges") as any;
-        if (!nodes || !edges) return;
+        const maps = getFlowMaps(root);
+        if (!maps) return;
+        const { nodes, edges } = maps;
 
         result.nodes.forEach((n) => {
           nodes.set(n.id, LiveObject.from(n));
@@ -114,9 +138,9 @@ export const generateArchitecture = task({
       }).catch(() => {});
 
       return { success: true, specId: specRecord.id };
-    } catch (error: any) {
+    } catch (error: unknown) {
       // 6. Catch errors gracefully
-      logger.error("Failed to generate architecture:", error);
+      logger.error("Failed to generate architecture:", { error: error instanceof Error ? error.message : String(error) });
 
       // Best-effort status write — never let error-handling itself throw,
       // otherwise it would mask the original error.

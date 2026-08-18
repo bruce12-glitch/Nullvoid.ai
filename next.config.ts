@@ -20,9 +20,9 @@ const nextConfig: NextConfig = {
     ],
   },
   transpilePackages: ["three", "@react-three/fiber", "@react-three/drei"],
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+  // `typescript.ignoreBuildErrors` was previously true, which silently shipped
+  // real type errors (including a missing Prisma client and wrong Liveblocks
+  // storage keys). The tree is clean now, so let the build enforce it.
   // Allow Arena preview host to fetch dev HMR/assets (fixes black screen in preview)
   allowedDevOrigins: ["*.e2b.app", "*.arena.ai"],
   experimental: {
@@ -38,18 +38,25 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
+    // SECURITY: these permissive framing headers exist only so the app can be
+    // shown inside the sandboxed dev preview iframe. Emitting them in
+    // production would override the hardened `X-Frame-Options: DENY` in
+    // vercel.json (a CSP `frame-ancestors *` beats X-Frame-Options), leaving
+    // the app open to clickjacking. So: dev/preview only.
+    const isPreview =
+      process.env.NODE_ENV !== "production" ||
+      process.env.PREVIEW_BYPASS_AUTH === "true";
+
+    if (!isPreview) return [];
+
     return [
       {
         source: "/(.*)",
         headers: [
-          // Allow embedding in Arena preview iframe (e2b.app + arena.ai) — fix white page with document icon
-          {
-            key: "X-Frame-Options",
-            value: "ALLOWALL",
-          },
           {
             key: "Content-Security-Policy",
-            value: "frame-ancestors 'self' https://*.e2b.app https://e2b.app https://*.arena.ai https://arena.ai https://*.arena.so https://arena.so http://localhost:* http://127.0.0.1:* *",
+            value:
+              "frame-ancestors 'self' https://*.e2b.app https://e2b.app https://*.arena.ai https://arena.ai https://*.arena.so https://arena.so http://localhost:* http://127.0.0.1:*",
           },
         ],
       },

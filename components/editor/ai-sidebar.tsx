@@ -124,13 +124,21 @@ export function AiSidebar({ isOpen, onClose, roomId, projectId }: AiSidebarProps
   const [specRunId, setSpecRunId] = useState<string | null>(null)
   const [specPublicToken, setSpecPublicToken] = useState<string | null>(null)
 
-  // Canvas storage for spec generation context
-  const nodesLiveMap = useStorage((root) => root.nodes)
-  const edgesLiveMap = useStorage((root) => root.edges)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const nodesArray = nodesLiveMap ? Array.from((nodesLiveMap as any).values?.() ?? []) : []
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const edgesArray = edgesLiveMap ? Array.from((edgesLiveMap as any).values?.() ?? []) : []
+  // Canvas storage for spec generation context.
+  //
+  // `useStorage` hands back an immutably-serialized plain object for a
+  // LiveMap — NOT a Map. Calling `.values()` on it yields undefined, so the
+  // previous `Array.from(map.values?.() ?? [])` silently produced `[]` and
+  // every generated spec described an empty system. Use Object.values(),
+  // which is what @liveblocks/react-flow does internally for this data.
+  const nodesArray = useStorage((root) => {
+    const m = root.flow?.nodes
+    return m ? Object.values(m) : []
+  })
+  const edgesArray = useStorage((root) => {
+    const m = root.flow?.edges
+    return m ? Object.values(m) : []
+  })
 
   const self = useSelf()
   const updateMyPresence = useUpdateMyPresence()

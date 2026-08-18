@@ -1,6 +1,6 @@
 "use client";
 
-import { UserButton } from "@clerk/nextjs";
+import { UserButton } from "@/lib/auth-ui";
 import { LayoutDashboard, Settings } from "lucide-react";
 import { useCanvasPreferences } from "@/hooks/useCanvasPreferences";
 

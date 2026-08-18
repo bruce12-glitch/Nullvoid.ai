@@ -3,6 +3,9 @@ import { getProjectsForUser } from "@/lib/projects"
 import { getCurrentProjectIdentity } from "@/lib/project-access"
 import { EditorHomeClient } from "@/components/editor/editor-home-client"
 
+// Project data must always be fresh — never prerender at build time.
+export const dynamic = "force-dynamic"
+
 export default async function EditorPage() {
   const identity = await getCurrentProjectIdentity()
   if (!identity.userId) redirect("/sign-in")

@@ -1,13 +1,28 @@
-import { currentUser } from "@clerk/nextjs/server";
 import { getLiveblocks, getUserColor } from "@/lib/liveblocks";
 import { prisma } from "@/lib/prisma";
 import { isEmailCollaborator } from "@/lib/project-collaborators";
+import { getCurrentProjectIdentity } from "@/lib/project-access";
+import { hasClerk } from "@/lib/runtime";
 
 export async function POST(request: Request) {
-  const user = await currentUser();
+  const identity = await getCurrentProjectIdentity();
 
-  if (!user || !user.id) {
+  if (!identity.userId) {
     return new Response("Unauthorized", { status: 401 });
+  }
+
+  // Resolve display info — Clerk when configured, guest identity otherwise.
+  let name = identity.primaryEmailAddress ?? "Guest";
+  let avatar = "";
+  if (hasClerk()) {
+    try {
+      const { currentUser } = await import("@clerk/nextjs/server");
+      const user = await currentUser();
+      name = user?.fullName ?? user?.primaryEmailAddress?.emailAddress ?? name;
+      avatar = user?.imageUrl ?? "";
+    } catch {
+      // fall through with identity defaults
+    }
   }
 
   let room: string;
@@ -31,8 +46,8 @@ export async function POST(request: Request) {
     return new Response("Forbidden", { status: 403 });
   }
 
-  const isOwner = project.ownerId === user.id;
-  const email = user.primaryEmailAddress?.emailAddress;
+  const isOwner = project.ownerId === identity.userId;
+  const email = identity.primaryEmailAddress;
   const isCollab = !isOwner && email ? await isEmailCollaborator(room, email) : false;
 
   if (!isOwner && !isCollab) {
@@ -47,14 +62,9 @@ export async function POST(request: Request) {
     return new Response("Failed to access Liveblocks room", { status: 502 });
   }
 
-  const name =
-    user?.fullName ??
-    user?.primaryEmailAddress?.emailAddress ??
-    "Anonymous";
-  const avatar = user?.imageUrl ?? "";
-  const color = getUserColor(user.id);
+  const color = getUserColor(identity.userId);
 
-  const session = lb.prepareSession(user.id, {
+  const session = lb.prepareSession(identity.userId, {
     userInfo: { name, avatar, color },
   });
 

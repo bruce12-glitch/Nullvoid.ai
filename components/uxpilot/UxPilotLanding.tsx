@@ -11,12 +11,11 @@ function Nav({ isPreview }: { isPreview: boolean }) {
         <span className="text-white text-[11px] font-semibold tracking-[0.18em] uppercase" style={{ fontFamily: "var(--font-satoshi), var(--font-geist-sans), sans-serif" }}>NullVoid</span>
       </div>
       <div className="hidden md:flex items-center gap-6 text-[11px] tracking-wide text-white/60">
-        <a href="#" className="hover:text-white transition-colors">Home</a>
-        <a href="#" className="hover:text-white transition-colors">Marketing</a>
-        <a href="#" className="hover:text-white transition-colors">UX Offerings</a>
-        <a href="#" className="hover:text-white transition-colors">About</a>
-        <a href="#" className="hover:text-white transition-colors">Blog</a>
-        <a href="#" className="hover:text-white transition-colors">Contact</a>
+        <a href="#features" className="hover:text-white transition-colors">Features</a>
+        <a href="#workflow" className="hover:text-white transition-colors">How it works</a>
+        <a href="#integrations" className="hover:text-white transition-colors">Integrations</a>
+        <Link href="/dashboard" className="hover:text-white transition-colors">Workspace</Link>
+        <a href="https://github.com/bruce12-glitch/nullvoid.AI" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">GitHub</a>
       </div>
       <Link href={isPreview ? "/dashboard" : "/sign-in"} className="hidden md:inline-flex items-center gap-2 px-4 h-7 rounded-full bg-white text-black text-xs font-semibold hover:bg-white/90 transition-colors">
         Start Designing <span className="w-4 h-4 rounded-full bg-black text-white flex items-center justify-center text-[10px]">→</span>
@@ -111,7 +110,7 @@ function Hero({ isPreview }: { isPreview: boolean }) {
 
 function Intro() {
   return (
-    <section className="bg-black border-t border-white/[0.06] py-12 md:py-16">
+    <section id="features" className="bg-black border-t border-white/[0.06] py-12 md:py-16">
       <div className="max-w-[1280px] mx-auto px-6 md:px-10 flex flex-col items-center text-center">
         <h2 className="text-[22px] md:text-[28px] font-semibold tracking-tight text-white leading-tight max-w-[560px]" style={{ fontFamily: "var(--font-satoshi), var(--font-geist-sans), sans-serif" }}>
           System Architecture With NullVoid isn&apos;t Transactional. It&apos;s <span className="text-white">Transformational</span>
@@ -132,7 +131,7 @@ function Intro() {
 
 function Stats() {
   return (
-    <section className="bg-black py-10 md:py-12">
+    <section id="workflow" className="bg-black py-10 md:py-12">
       <div className="max-w-[1280px] mx-auto px-6 md:px-10">
         <div className="flex flex-col items-center text-center mb-8">
           <h3 className="text-base md:text-lg font-semibold text-white tracking-tight" style={{ fontFamily: "var(--font-satoshi), var(--font-geist-sans), sans-serif" }}>Driving Growth. Delivering Care</h3>
@@ -241,7 +240,7 @@ function Ecosystem() {
 
 function Connect({ isPreview }: { isPreview: boolean }) {
   return (
-    <section className="bg-black py-12 border-t border-white/[0.06]">
+    <section id="integrations" className="bg-black py-12 border-t border-white/[0.06]">
       <div className="max-w-[1280px] mx-auto px-6 md:px-10">
         <div className="text-center mb-6">
           <h3 className="text-[20px] font-semibold tracking-tight text-white" style={{ fontFamily: "var(--font-satoshi), var(--font-geist-sans), sans-serif" }}>Where Founders and Top Talent Connect</h3>
@@ -274,7 +273,7 @@ function Footer() {
           <div className="text-right hidden md:block"><div className="text-white font-medium tracking-wide">NULLVOID</div><div>Where Systems Come to Life.</div><div className="text-white/20">Build • Collaborate • Ship</div></div>
         </div>
         <div className="mt-10 relative select-none pointer-events-none"><div className="text-[72px] md:text-[120px] lg:text-[148px] font-black tracking-[-0.06em] leading-none text-transparent bg-clip-text bg-gradient-to-b from-white/[0.07] to-white/[0.02] whitespace-nowrap overflow-hidden">NULLVOID</div></div>
-        <div className="mt-2 flex flex-col md:flex-row items-center justify-between gap-2 text-[10px] text-white/25"><span>© 2026 NullVoid AI • Dark workspace • Spec-driven • Ghost AI</span><span className="flex gap-4"><a href="#" className="hover:text-white/50">Privacy</a><a href="#" className="hover:text-white/50">Terms</a><a href="#" className="hover:text-white/50">GitHub</a></span></div>
+        <div className="mt-2 flex flex-col md:flex-row items-center justify-between gap-2 text-[10px] text-white/25"><span>© 2026 NullVoid AI • Dark workspace • Spec-driven • Ghost AI</span><span className="flex gap-4"><Link href="/dashboard" className="hover:text-white/50">Workspace</Link><a href="#features" className="hover:text-white/50">Features</a><a href="https://github.com/bruce12-glitch/nullvoid.AI" target="_blank" rel="noreferrer" className="hover:text-white/50">GitHub</a></span></div>
       </div>
     </footer>
   );

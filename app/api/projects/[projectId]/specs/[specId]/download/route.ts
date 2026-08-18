@@ -24,7 +24,10 @@ export async function GET(
   }
 
   let content: string
-  if (record.filePath.startsWith("http")) {
+  if (record.content) {
+    // Inline DB storage (SOLO mode / blob fallback).
+    content = record.content
+  } else if (record.filePath.startsWith("http")) {
     // Specs are stored as private blobs — fetch with the blob SDK so the
     // read-write token authenticates the request (a plain fetch would 401/403).
     try {

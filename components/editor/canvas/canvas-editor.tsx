@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef } from "react"
-import { useMyPresence } from "@liveblocks/react"
+import { useMyPresence } from "@/lib/collab/react"
 import {
   ReactFlow,
   Background,
@@ -15,8 +15,8 @@ import {
 import "@xyflow/react/dist/style.css"
 import { useReactFlow } from "@xyflow/react"
 import type { Connection } from "@xyflow/react"
-import { useLiveblocksFlow } from "@liveblocks/react-flow"
-import { useUndo, useRedo, useCanUndo, useCanRedo } from "@liveblocks/react"
+import { useLiveblocksFlow } from "@/lib/collab/flow"
+import { useUndo, useRedo, useCanUndo, useCanRedo } from "@/lib/collab/react"
 import type { CanvasNode, CanvasEdge, NodeShape } from "@/types/canvas"
 import { NODE_COLORS } from "@/types/canvas"
 import { CanvasNodeComponent } from "@/components/editor/canvas/canvas-node"

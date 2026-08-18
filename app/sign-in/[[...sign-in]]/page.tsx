@@ -1,4 +1,4 @@
-import { SignIn } from "@clerk/nextjs"
+import { AuthWidget } from "@/components/auth/auth-widget"
 import { BrainCircuit, Share2, ScrollText, Sparkles, Cpu, GitBranch, Shield } from "lucide-react"
 
 const features = [
@@ -111,7 +111,7 @@ export default function SignInPage() {
               NullVoid<span className="text-accent-primary">.AI</span>
             </span>
           </div>
-          <SignIn />
+          <AuthWidget mode="sign-in" />
         </div>
       </div>
     </main>

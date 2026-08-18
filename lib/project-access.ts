@@ -8,8 +8,14 @@ export interface ProjectIdentity {
 }
 
 export async function getCurrentProjectIdentity(): Promise<ProjectIdentity> {
-  // Preview bypass: return mock identity when dummy auth is enabled (live dev server)
-  if (process.env.PREVIEW_BYPASS_AUTH === "true" || process.env.CLERK_SECRET_KEY?.includes("dummy") || process.env.CLERK_SECRET_KEY?.includes("preview")) {
+  // Solo/preview bypass: return the local guest identity when Clerk is not
+  // configured (or explicitly bypassed for previews).
+  if (
+    process.env.PREVIEW_BYPASS_AUTH === "true" ||
+    !process.env.CLERK_SECRET_KEY ||
+    process.env.CLERK_SECRET_KEY?.includes("dummy") ||
+    process.env.CLERK_SECRET_KEY?.includes("preview")
+  ) {
     return {
       userId: "preview_user_001",
       primaryEmailAddress: "preview@nullvoid.ai",

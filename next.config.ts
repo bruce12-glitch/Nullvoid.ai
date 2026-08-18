@@ -7,6 +7,14 @@ const analyzer = withBundleAnalyzer({
 });
 
 const nextConfig: NextConfig = {
+  env: {
+    // Build-time service flags: client bundles switch between FULL mode
+    // (Liveblocks/Clerk/Trigger.dev) and SOLO mode (local fallbacks).
+    NEXT_PUBLIC_COLLAB_ENABLED: process.env.LIVEBLOCKS_SECRET_KEY?.startsWith("sk_") ? "true" : "false",
+    NEXT_PUBLIC_AUTH_ENABLED: process.env.CLERK_SECRET_KEY?.startsWith("sk_") ? "true" : "false",
+    NEXT_PUBLIC_TRIGGER_ENABLED:
+      process.env.TRIGGER_SECRET_KEY && process.env.LIVEBLOCKS_SECRET_KEY?.startsWith("sk_") ? "true" : "false",
+  },
   images: {
     remotePatterns: [
       {

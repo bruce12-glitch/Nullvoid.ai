@@ -1,6 +1,6 @@
 "use client"
 
-import { ClientSideSuspense } from "@liveblocks/react"
+import { CollabSuspense as ClientSideSuspense } from "@/lib/collab/provider"
 import { ReactFlowProvider } from "@xyflow/react"
 import { CanvasEditor } from "@/components/editor/canvas/canvas-editor"
 import type { CanvasTemplate } from "@/components/editor/starter-templates"

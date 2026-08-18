@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { UserButtonWrapper } from "@/components/auth/user-button-wrapper";
 import { ExportModal } from "./ExportModal";
 import { AnalyticsPanel } from "./AnalyticsPanel";
-import { useOthers } from "@liveblocks/react/suspense";
+import { useOthers } from "@/lib/collab/suspense";
 import { useCanvasStore } from "@/stores/useCanvasStore";
 
 export function TopBar() {

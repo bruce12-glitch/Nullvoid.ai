@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useCanvasStore } from "@/stores/useCanvasStore";
-import { useUpdateMyPresence } from "@liveblocks/react/suspense";
+import { useUpdateMyPresence } from "@/lib/collab/suspense";
 import { canvasFSMActor } from "@/hooks/useCanvasFSM";
 
 export function useSpatialPresence() {

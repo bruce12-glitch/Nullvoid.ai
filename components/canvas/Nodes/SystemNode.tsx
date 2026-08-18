@@ -5,7 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { useCanvasStore } from "@/stores/useCanvasStore";
 import { canvasFSMActor } from "@/hooks/useCanvasFSM";
-import { useOthers } from "@liveblocks/react/suspense";
+import { useOthers } from "@/lib/collab/suspense";
 import type { CanvasNode } from "@/types/canvas";
 import { ServiceNode } from "./ServiceNode";
 import { DatabaseNode } from "./DatabaseNode";

@@ -4,6 +4,21 @@ NullVoid AI is a real-time collaborative 3D & 2D system design workspace. Users 
 
 This project was built utilizing a "spec-driven agentic development" methodology, combining human architectural design with AI coding agents executing precise implementation units.
 
+## ⚡ Two Runtime Modes
+
+NullVoid degrades gracefully based on which services you configure:
+
+| Capability | SOLO mode (no keys) | FULL mode (all keys) |
+|---|---|---|
+| Authentication | Local guest identity | Clerk accounts |
+| Canvas editing | ✅ Local state + DB autosave | ✅ Liveblocks CRDT multiplayer |
+| AI architecture generation | ✅ Inline in the API route | ✅ Trigger.dev background jobs |
+| AI spec generation | ✅ Inline + stored in PostgreSQL | ✅ Background + Vercel Blob |
+| Live cursors / presence | — | ✅ |
+
+**Only two things are strictly required: a PostgreSQL database and a Google Gemini API key.** Everything else upgrades automatically when its key appears in `.env` (service detection lives in `lib/runtime.ts`, the client facade in `lib/collab/`).
+
+
 ## 🛠 Tech Stack
 
 * **Frontend:** Next.js 16, React 19, Tailwind CSS v4, and shadcn/ui.
@@ -39,19 +54,30 @@ NullVoid AI is designed to be built and maintained by AI coding agents using a 6
 
 ## 🚀 Getting Started
 
+### Quick start (SOLO mode)
+```bash
+bash scripts/dev-setup.sh   # provisions local PostgreSQL + migrations + deps
+cp .env.example .env        # add DATABASE_URL and GOOGLE_GENERATIVE_AI_API_KEY
+npm run dev
+```
+
 ### 1. Install Dependencies
 ```bash
 npm install
 ```
 
 ### 2. Set Up Environment Variables
-Create an `.env` file in the root directory (refer to `.env.example`) and configure the following services:
-* **Clerk:** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`
+Create an `.env` file in the root directory (refer to `.env.example`).
+
+**Required:**
 * **Prisma / PostgreSQL:** `DATABASE_URL`
+* **Google AI Studio:** `GOOGLE_GENERATIVE_AI_API_KEY`
+
+**Optional (enables FULL mode):**
+* **Clerk:** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`
 * **Liveblocks:** `LIVEBLOCKS_SECRET_KEY`
 * **Vercel Blob:** `BLOB_READ_WRITE_TOKEN`
-* **Trigger.dev:** `TRIGGER_SECRET_KEY`, `NEXT_PUBLIC_TRIGGER_PUBLIC_API_KEY`
-* **Google AI Studio:** `GOOGLE_GENERATIVE_AI_API_KEY`
+* **Trigger.dev:** `TRIGGER_SECRET_KEY`
 
 ### 3. Database Initialization
 Generate the Prisma client and push your schema to the database:

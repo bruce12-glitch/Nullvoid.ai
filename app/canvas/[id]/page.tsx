@@ -1,8 +1,7 @@
 "use client"
 
 import { use } from "react"
-import { LiveblocksProvider, RoomProvider, ClientSideSuspense } from "@liveblocks/react"
-import { LiveObject, LiveMap } from "@liveblocks/client"
+import { CollabProvider, CollabSuspense as ClientSideSuspense } from "@/lib/collab/provider"
 import { EditorLayout } from "@/components/editor/EditorLayout";
 import { Scene } from "@/components/canvas/Scene";
 
@@ -24,22 +23,12 @@ function WorkspaceLoading() {
 export default function CanvasWorkspacePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   return (
-    <LiveblocksProvider authEndpoint="/api/liveblocks-auth">
-      <RoomProvider
-        id={id}
-        initialPresence={{ cursor: null, selectedNodeId: null, isThinking: false, thinking: false }}
-        initialStorage={{
-          nodes: new LiveMap(),
-          edges: new LiveMap(),
-          systemMetadata: new LiveObject({ title: "Architecture", updatedAt: new Date().toISOString() }),
-        }}
-      >
+    <CollabProvider roomId={id} title="Architecture">
         <ClientSideSuspense fallback={<WorkspaceLoading />}>
           <EditorLayout projectId={id}>
             <Scene />
           </EditorLayout>
         </ClientSideSuspense>
-      </RoomProvider>
-    </LiveblocksProvider>
+    </CollabProvider>
   );
 }

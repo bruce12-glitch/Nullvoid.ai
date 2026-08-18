@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useStorage, useMutation } from "@liveblocks/react";
+import { useStorage, useMutation } from "@/lib/collab/react";
 import { LiveObject } from "@liveblocks/client";
 import { useCanvasStore } from "@/stores/useCanvasStore";
 import type { CanvasNode, CanvasEdge } from "@/types/canvas";

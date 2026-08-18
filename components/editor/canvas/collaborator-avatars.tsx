@@ -1,8 +1,8 @@
 "use client"
 
 import Image from "next/image"
-import { useOthers } from "@liveblocks/react"
-import { UserButton, useUser } from "@clerk/nextjs"
+import { useOthers } from "@/lib/collab/react"
+import { UserButton, useUser } from "@/lib/auth-ui"
 
 const MAX_VISIBLE = 5
 

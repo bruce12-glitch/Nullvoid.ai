@@ -1,7 +1,6 @@
 "use client"
 
-import { LiveObject, LiveMap } from "@liveblocks/client"
-import { LiveblocksProvider, RoomProvider } from "@liveblocks/react"
+import { CollabProvider } from "@/lib/collab/provider"
 import dynamic from "next/dynamic"
 import { useCallback, useRef, useState } from "react"
 import { EditorNavbar } from "@/components/editor/editor-navbar"
@@ -45,17 +44,8 @@ export function EditorWorkspaceClient({
   const handleSaveReady = useCallback((fn: () => void) => { saveFnRef.current = fn }, [])
 
   return (
-    <LiveblocksProvider authEndpoint="/api/liveblocks-auth">
-      <RoomProvider
-        id={roomId}
-        initialPresence={{ cursor: null, selectedNodeId: null, isThinking: false, thinking: false }}
-        initialStorage={{
-          nodes: new LiveMap(),
-          edges: new LiveMap(),
-          systemMetadata: new LiveObject({ title: "New Architecture", updatedAt: new Date().toISOString() }),
-        }}
-      >
-        <div className="flex h-screen flex-col bg-bg-base">
+    <CollabProvider roomId={roomId}>
+      <div className="flex h-screen flex-col bg-bg-base">
           <EditorNavbar
             isOpen={sidebarOpen}
             onToggle={() => setSidebarOpen((prev) => !prev)}
@@ -108,7 +98,6 @@ export function EditorWorkspaceClient({
             onImport={(template) => setPendingTemplate(template)}
           />
         </div>
-      </RoomProvider>
-    </LiveblocksProvider>
+    </CollabProvider>
   )
 }

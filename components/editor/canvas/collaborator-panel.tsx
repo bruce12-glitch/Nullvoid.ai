@@ -1,6 +1,6 @@
 "use client";
 
-import { useOthers } from "@liveblocks/react/suspense";
+import { useOthers } from "@/lib/collab/suspense";
 import { useCanvasStore } from "@/stores/useCanvasStore";
 import { Activity, Wifi } from "lucide-react";
 

@@ -15,6 +15,7 @@ const publicPaths = [
 function isPreviewBypass(): boolean {
   return (
     process.env.PREVIEW_BYPASS_AUTH === "true" ||
+    !process.env.CLERK_SECRET_KEY ||
     (process.env.CLERK_SECRET_KEY?.includes("dummy") ?? false) ||
     (process.env.CLERK_SECRET_KEY?.includes("preview") ?? false) ||
     (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.includes("dummy") ?? false)

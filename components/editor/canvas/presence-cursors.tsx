@@ -1,7 +1,7 @@
 "use client"
 
 import { useLayoutEffect, useRef, useState } from "react"
-import { useOthers } from "@liveblocks/react"
+import { useOthers } from "@/lib/collab/react"
 import { useReactFlow, useViewport } from "@xyflow/react"
 import { Loader2 } from "lucide-react"
 

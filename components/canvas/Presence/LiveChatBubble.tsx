@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useBroadcastEvent } from "@liveblocks/react/suspense";
+import { useBroadcastEvent } from "@/lib/collab/suspense";
 
 export function LiveChatBubble() {
   const [isOpen, setIsOpen] = useState(false);

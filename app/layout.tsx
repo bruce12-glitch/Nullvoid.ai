@@ -1,4 +1,6 @@
+import type { Metadata } from "next"
 import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google"
+import { hasClerk } from "@/lib/runtime"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -18,33 +20,73 @@ const satoshi = Space_Grotesk({
   display: "swap",
 })
 
-export default function RootLayout({
+export const metadata: Metadata = {
+  title: {
+    default: "NullVoid.AI — AI-Powered Collaborative System Design",
+    template: "%s · NullVoid.AI",
+  },
+  description:
+    "Describe your architecture in plain English. NullVoid's AI maps it onto a real-time collaborative canvas and exports complete Markdown technical specs.",
+  keywords: ["system design", "architecture diagrams", "AI", "collaboration", "technical specs"],
+  openGraph: {
+    title: "NullVoid.AI — Design systems at the speed of thought",
+    description:
+      "AI-generated architecture diagrams on a real-time collaborative canvas, with one-click Markdown spec exports.",
+    type: "website",
+    siteName: "NullVoid.AI",
+  },
+}
+
+function FontShell({ children }: { children: React.ReactNode }) {
+  return (
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} ${satoshi.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col">{children}</body>
+    </html>
+  )
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const isPreviewBypass = process.env.PREVIEW_BYPASS_AUTH === "true"
-  if (isPreviewBypass) {
+  // SOLO mode — Clerk not configured. The app runs with a local guest
+  // identity; all features work for a single user.
+  if (!hasClerk()) {
     return (
-      <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${satoshi.variable} h-full antialiased`}>
-        <body className="min-h-full flex flex-col">
-          <div className="fixed top-0 inset-x-0 z-[9999] bg-amber-500 text-black text-center text-xs py-1 font-medium">
-            ⚡ Preview Mode — Auth & DB mocked • Landing page is live • <a href="/dashboard" className="underline font-bold ml-1">Go to Dashboard →</a> <span className="hidden sm:inline opacity-60">| set real .env keys for full functionality</span>
-          </div>
-          <div className="pt-6 flex-1 flex flex-col">{children}</div>
-        </body>
-      </html>
+      <FontShell>
+        <div className="fixed top-0 inset-x-0 z-[9999] bg-gradient-to-r from-blue-600 to-violet-600 text-white text-center text-xs py-1 font-medium">
+          ⚡ Solo Mode — running without external accounts ·{" "}
+          <a href="/dashboard" className="underline font-semibold">
+            Open Dashboard →
+          </a>{" "}
+          <span className="hidden sm:inline opacity-70">
+            | add Clerk, Liveblocks &amp; Trigger.dev keys in .env for multiplayer
+          </span>
+        </div>
+        <div className="pt-6 flex-1 flex flex-col">{children}</div>
+      </FontShell>
     )
   }
 
-  // Non-preview (prod) — lazy import client providers to keep preview SSR
-  // Note: This branch is not used in preview, so it won't affect the black screen
+  // FULL mode — wrap the app with Clerk.
+  const { ClerkProvider } = await import("@clerk/nextjs")
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${satoshi.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">
-        {/* For prod, you would wrap with ClerkProvider etc. — kept minimal for now to avoid bailout */}
-        <div className="pt-0 flex-1 flex flex-col">{children}</div>
-      </body>
-    </html>
+    <ClerkProvider
+      appearance={{
+        variables: {
+          colorPrimary: "#3b82f6",
+          colorBackground: "#0a0a0f",
+          borderRadius: "0.75rem",
+        },
+      }}
+    >
+      <FontShell>
+        <div className="flex-1 flex flex-col">{children}</div>
+      </FontShell>
+    </ClerkProvider>
   )
 }

@@ -3,7 +3,7 @@
 import { useCanvasPreferences } from "@/hooks/useCanvasPreferences";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { UserProfile } from "@clerk/nextjs";
+import { UserProfile } from "@/lib/auth-ui";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";

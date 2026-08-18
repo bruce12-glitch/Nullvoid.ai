@@ -21,7 +21,9 @@ import {
   useCreateFeedMessage,
   useSelf,
   useStorage,
-} from "@liveblocks/react"
+  COLLAB_ENABLED,
+} from "@/lib/collab/react"
+import { soloSetCanvas, soloBroadcast } from "@/lib/collab/solo"
 import { useRealtimeRun } from "@trigger.dev/react-hooks"
 import { AiStatusFeedMessageSchema, ChatFeedMessageSchema } from "@/types/tasks"
 import { cn } from "@/lib/utils"
@@ -124,13 +126,20 @@ export function AiSidebar({ isOpen, onClose, roomId, projectId }: AiSidebarProps
   const [specRunId, setSpecRunId] = useState<string | null>(null)
   const [specPublicToken, setSpecPublicToken] = useState<string | null>(null)
 
-  // Canvas storage for spec generation context
+  // Canvas storage for spec generation context.
+  // Liveblocks 3.x useStorage returns plain JSON objects for LiveMap values,
+  // while the solo store mirrors the same shape — normalise both.
   const nodesLiveMap = useStorage((root) => root.nodes)
   const edgesLiveMap = useStorage((root) => root.edges)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const nodesArray = nodesLiveMap ? Array.from((nodesLiveMap as any).values?.() ?? []) : []
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const edgesArray = edgesLiveMap ? Array.from((edgesLiveMap as any).values?.() ?? []) : []
+  const toArray = (mapLike: any): any[] => {
+    if (!mapLike) return []
+    if (typeof mapLike.values === "function") return Array.from(mapLike.values())
+    if (typeof mapLike === "object") return Object.values(mapLike)
+    return []
+  }
+  const nodesArray = toArray(nodesLiveMap)
+  const edgesArray = toArray(edgesLiveMap)
 
   const self = useSelf()
   const updateMyPresence = useUpdateMyPresence()
@@ -236,7 +245,16 @@ export function AiSidebar({ isOpen, onClose, roomId, projectId }: AiSidebarProps
         body: JSON.stringify({ roomId, chatHistory, nodes, edges }),
       })
       if (!res.ok) throw new Error("Spec generation failed")
-      const { runId: newSpecRunId } = (await res.json()) as { runId: string }
+      const specResponse = (await res.json()) as { runId: string | null; inline?: boolean }
+
+      // Inline (SOLO) mode: the spec was generated in the request itself.
+      if (specResponse.inline) {
+        setIsSpecGenerating(false)
+        fetchSpecs()
+        return
+      }
+
+      const newSpecRunId = specResponse.runId as string
 
       const tokenRes = await fetch("/api/ai/spec/token", {
         method: "POST",
@@ -308,12 +326,50 @@ export function AiSidebar({ isOpen, onClose, roomId, projectId }: AiSidebarProps
       const designRes = await fetch("/api/ai/design", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: text, roomId, projectId }),
+        body: JSON.stringify({
+          prompt: text,
+          roomId,
+          projectId,
+          nodes: nodesArray,
+          edges: edgesArray,
+        }),
       })
 
       if (!designRes.ok) throw new Error("Design request failed")
 
-      const { runId: newRunId } = (await designRes.json()) as { runId: string }
+      const designData = (await designRes.json()) as {
+        runId: string | null
+        inline?: boolean
+        summary?: string
+        nodes?: unknown[]
+        edges?: unknown[]
+      }
+
+      // Inline (SOLO) mode: the design was generated in the request itself.
+      if (designData.inline) {
+        if (!COLLAB_ENABLED && designData.nodes && designData.edges) {
+          // Apply the new canvas state to the local solo store.
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          soloSetCanvas(designData.nodes as any[], designData.edges as any[])
+        }
+
+        const summary = designData.summary ?? "Design applied to canvas."
+        createFeedMessage(CHAT_FEED_ID, {
+          sender: "Ghost AI",
+          role: "assistant",
+          content: summary,
+          timestamp: new Date().toISOString(),
+        }).catch(() => {})
+        createFeedMessage(FEED_ID, { text: summary, status: "complete" }).catch(() => {})
+        soloBroadcast({ type: "ai-status", message: summary, status: "complete" })
+
+        setIsLoading(false)
+        setStatusText("")
+        updateMyPresence({ thinking: false })
+        return
+      }
+
+      const newRunId = designData.runId as string
 
       const tokenRes = await fetch("/api/ai/design/token", {
         method: "POST",
@@ -344,7 +400,7 @@ export function AiSidebar({ isOpen, onClose, roomId, projectId }: AiSidebarProps
       setStatusText("")
       updateMyPresence({ thinking: false })
     }
-  }, [input, isLoading, roomId, projectId, updateMyPresence, createFeedMessage, self])
+  }, [input, isLoading, roomId, projectId, updateMyPresence, createFeedMessage, self, nodesArray, edgesArray])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

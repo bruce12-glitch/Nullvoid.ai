@@ -1,7 +1,7 @@
 "use client"
 
 import { LayoutTemplate, PanelLeftClose, PanelLeftOpen, Save, Share2, Sparkles } from "lucide-react"
-import { UserButton } from "@clerk/nextjs"
+import { UserButton } from "@/lib/auth-ui"
 import { Button } from "@/components/ui/button"
 import type { SaveStatus } from "@/hooks/use-canvas-autosave"
 

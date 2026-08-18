@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react"
 import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath } from "@xyflow/react"
 import type { EdgeProps } from "@xyflow/react"
-import { useMutation } from "@liveblocks/react"
+import { useMutation } from "@/lib/collab/react"
 import { LiveObject } from "@liveblocks/client"
 import type { CanvasEdge } from "@/types/canvas"
 

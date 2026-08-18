@@ -1,6 +1,6 @@
 "use client";
 
-import { useOthers } from "@liveblocks/react/suspense";
+import { useOthers } from "@/lib/collab/suspense";
 import { Cursor2DOverlay } from "./Cursor2DOverlay";
 import { useSpatialPresence } from "@/hooks/useSpatialPresence";
 

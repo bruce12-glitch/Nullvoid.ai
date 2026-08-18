@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { getCurrentProjectIdentity, userHasProjectAccess } from "@/lib/project-access"
+import { hasBlob } from "@/lib/runtime"
 import { put, get } from "@vercel/blob"
 import type { NextRequest } from "next/server"
 
@@ -93,21 +94,32 @@ export async function PUT(
       stored = legacyUrl
     } else {
       // Modern contract: { nodes, edges } — serialize to a private blob and
-      // persist the URL so the canvas actually survives reloads.
+      // persist the URL so the canvas actually survives reloads. Without a
+      // valid Blob token, store the JSON inline in the database instead
+      // (the GET handler already supports inline JSON).
       const nodes = Array.isArray(b.nodes) ? b.nodes : undefined
       const edges = Array.isArray(b.edges) ? b.edges : undefined
       if (nodes !== undefined || edges !== undefined) {
-        const blob = await put(
-          `canvases/${projectId}/${Date.now()}-canvas.json`,
-          JSON.stringify({ nodes: nodes ?? [], edges: edges ?? [] }),
-          {
-            access: "private",
-            contentType: "application/json",
-            addRandomSuffix: false,
-            allowOverwrite: true,
+        const payload = JSON.stringify({ nodes: nodes ?? [], edges: edges ?? [] })
+        if (hasBlob()) {
+          try {
+            const blob = await put(
+              `canvases/${projectId}/${Date.now()}-canvas.json`,
+              payload,
+              {
+                access: "private",
+                contentType: "application/json",
+                addRandomSuffix: false,
+                allowOverwrite: true,
+              }
+            )
+            stored = blob.url
+          } catch {
+            stored = payload
           }
-        )
-        stored = blob.url
+        } else {
+          stored = payload
+        }
       }
     }
   }

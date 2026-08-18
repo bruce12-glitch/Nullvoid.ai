@@ -1,6 +1,6 @@
 "use client";
 
-import { useEventListener } from "@liveblocks/react/suspense";
+import { useEventListener } from "@/lib/collab/suspense";
 import { useState, useEffect } from "react";
 import { Loader2, Sparkles, CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";

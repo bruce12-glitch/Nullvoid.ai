@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react"
 import { Handle, Position, NodeResizer, NodeToolbar } from "@xyflow/react"
 import type { NodeProps } from "@xyflow/react"
-import { useMutation } from "@liveblocks/react"
+import { useMutation } from "@/lib/collab/react"
 import { LiveObject } from "@liveblocks/client"
 import type { CanvasNode, NodeShape } from "@/types/canvas"
 import { NODE_COLORS } from "@/types/canvas"

@@ -1,5 +1,6 @@
 import { getCurrentProjectIdentity, getAccessibleProject } from "@/lib/project-access"
 import { hasTrigger, hasLiveblocks } from "@/lib/runtime"
+import { rateLimit, rateLimitResponse, clampPrompt, AI_LIMITS } from "@/lib/rate-limit"
 import { runDesignAgent, applyDesignActions, buildCanvasContext } from "@/lib/ai/design-engine"
 import type { CanvasNode, CanvasEdge } from "@/types/canvas"
 
@@ -12,12 +13,12 @@ export async function POST(request: Request) {
 
   const body: unknown = await request.json().catch(() => ({}))
   const b = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {}
-  const prompt = typeof b.prompt === "string" ? b.prompt.trim() : ""
+  const prompt = typeof b.prompt === "string" ? clampPrompt(b.prompt.trim()) : ""
   const roomId = typeof b.roomId === "string" ? b.roomId.trim() : ""
   const projectId = typeof b.projectId === "string" ? b.projectId.trim() : ""
   // Current canvas state — sent by the client for inline (SOLO) generation.
-  const clientNodes = Array.isArray(b.nodes) ? (b.nodes as CanvasNode[]) : []
-  const clientEdges = Array.isArray(b.edges) ? (b.edges as CanvasEdge[]) : []
+  const clientNodes = (Array.isArray(b.nodes) ? (b.nodes as CanvasNode[]) : []).slice(0, AI_LIMITS.maxNodes)
+  const clientEdges = (Array.isArray(b.edges) ? (b.edges as CanvasEdge[]) : []).slice(0, AI_LIMITS.maxEdges)
 
   if (!prompt || !roomId || !projectId) {
     return Response.json({ error: "Missing required fields" }, { status: 400 })
@@ -31,6 +32,9 @@ export async function POST(request: Request) {
   if (roomId !== project.id) {
     return Response.json({ error: "Room does not belong to this project" }, { status: 403 })
   }
+
+  const limit = rateLimit(`design:${identity.userId}`, 10)
+  if (limit.limited) return rateLimitResponse(limit)
 
   /* ------------------------------------------------------------------ */
   /* FULL mode — background job via Trigger.dev + Liveblocks CRDT        */
@@ -66,6 +70,13 @@ export async function POST(request: Request) {
     )
   } catch (error) {
     console.error("Inline design generation failed:", error)
+    const status = (error as { statusCode?: number })?.statusCode
+    if (status === 429 || status === 503) {
+      return Response.json(
+        { error: "The AI model is currently overloaded. Please try again shortly." },
+        { status: 503 }
+      )
+    }
     return Response.json({ error: "Design generation failed. Please try again." }, { status: 500 })
   }
 }

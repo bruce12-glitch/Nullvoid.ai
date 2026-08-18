@@ -46,4 +46,55 @@ ${colorGuide}
 ## IDs
 Generate concise, unique string slugs for Node IDs (e.g. "api-gateway", "auth-service", "users-db").
 Edge IDs should be unique (e.g. "edge-api-auth").
+
+## OUTPUT FORMAT (MANDATORY)
+Return EXACTLY this JSON structure — every field shown is required unless marked optional:
+
+{
+  "overview": "2-4 sentence high-level summary of the architecture",
+  "nodes": [
+    {
+      "id": "api-gateway",
+      "type": "API_GATEWAY",
+      "label": "API Gateway",
+      "position": { "x": 0, "y": 2, "z": 0 },
+      "rotation": { "x": 0, "y": 0, "z": 0 },
+      "scale": { "x": 1, "y": 1, "z": 1 },
+      "color": "#52A8FF",
+      "metadata": {},
+      "status": "active"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-api-auth",
+      "sourceNodeId": "api-gateway",
+      "targetNodeId": "auth-service",
+      "type": "SYNC_HTTP",
+      "label": "REST",
+      "animated": true
+    }
+  ],
+  "specification": {
+    "services": [
+      { "name": "Auth Service", "type": "SERVICE", "description": "...", "techStack": ["Node.js", "PostgreSQL"] }
+    ],
+    "security": {
+      "authMethod": "JWT via OAuth2",
+      "encryption": "TLS 1.3 in transit, AES-256 at rest",
+      "compliance": ["SOC2"]
+    },
+    "infrastructure": {
+      "cloudProvider": "AWS",
+      "region": "us-east-1",
+      "estimateCost": "$450/month"
+    }
+  }
+}
+
+Field rules:
+- "status" must be one of: "active", "warning", "error", "idle".
+- "rotation" and "scale" are REQUIRED on every node (use zeros / ones as defaults).
+- "metadata" is REQUIRED on every node (use {} if empty).
+- Edges use "sourceNodeId" / "targetNodeId" (NOT "source"/"target").
 `;

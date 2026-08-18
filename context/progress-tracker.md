@@ -4,11 +4,42 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Phase 3: Production Hardening — COMPLETED (2026-08-18)
+- Phase 4: Backend Deep Audit & Hardening — COMPLETED (2026-08-18)
 
 ## Current Goal
 
 🚀 Market-ready. App is fully functional in SOLO mode (no external accounts) and upgrades automatically to FULL mode when service keys are configured.
+
+## Phase 4 — Backend Deep Audit & Hardening (2026-08-18)
+
+### Contract bugs fixed (features that were silently broken)
+- **POST /api/projects read `title` but every client sends `name`** → all projects created from the editor were named "Untitled Project". Now accepts `name` | `title` + `description`; validates custom room-id slug; duplicate id → 409.
+- **PATCH /api/projects/[id] required `title`** → rename from the editor ALWAYS failed with 400. Now accepts `name` | `title`, `description`, `status`; clear 400 when body is empty.
+- **GET /api/projects** now returns shared projects too (`shared` array) via getProjectsForUser.
+- **New GET /api/projects/[id]** endpoint (owner or collaborator).
+- **New DELETE /api/projects/[id]/specs/[specId]** (owner only).
+
+### 3D AI pipeline repaired
+- `/api/ai/generate` and `/api/ai/trigger-job` were Trigger.dev-only → 500 in SOLO mode. Both now run `generateArchitectureSpec` inline and return the 3D architecture.
+- **SYSTEM_ARCHITECT_PROMPT never showed the required JSON shape** → Gemini responses failed strict Zod validation (missing overview/rotation/scale/metadata/status). Prompt now embeds an explicit OUTPUT FORMAT block; `normalizeArchitectureResponse()` leniently fills defaults and maps `source/target` → `sourceNodeId/targetNodeId` before validation. Verified: 9 nodes/11 edges in 20s.
+
+### Gemini resilience
+- `isOverloadedError()` fail-fast: 503/429 skips to the next model immediately instead of exponential-backoff-retrying an overloaded model (a request used to burn 170s+ before responding).
+- Candidate order now leads with proven-good `gemini-3.6-flash` (pinned via GEMINI_MODEL); `gemini-flash-latest` (3.7) is heavily load-shed.
+- spec-generator (3D) now uses the same model-candidate chain.
+
+### Security / robustness
+- `lib/rate-limit.ts`: shared sliding-window limiter applied to design (10/min), spec (6/min), generate (10/min), trigger-job (10/min), chat-modify (10/min); 429 + Retry-After.
+- AI input caps: prompt 4k chars, ≤300 nodes, ≤600 edges, ≤60 chat messages (4k chars each).
+- Canvas PUT: 413 when serialized canvas exceeds 2 MB.
+- AI routes return 503 with a friendly message on model overload instead of generic 500.
+- Clerk webhook returns 503 "not configured" instead of 500 when secret absent.
+- `actions/project.actions.ts` auth bypass aligned with missing CLERK_SECRET_KEY.
+
+### Observability
+- `/api/health` now reports mode (solo/full) and per-service strategy: database, gemini (live check), liveblocks, auth, backgroundJobs, storage.
+
+All verified E2E against the production build: create/rename/delete with correct names, 409/400/413 paths, collaborators, 2D design (6 nodes/5 edges), 3D generate (9 nodes/11 edges/20s), spec create+delete, health.
 
 ## Phase 3 — Production Hardening (2026-08-18)
 

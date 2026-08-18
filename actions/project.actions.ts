@@ -5,7 +5,15 @@ import { db } from "@/lib/db";
 import type { ProjectStatus } from "@/lib/generated/prisma/client";
 
 async function getAuthUserId(): Promise<string | null> {
-  if (process.env.PREVIEW_BYPASS_AUTH === "true") return "preview_user_001"
+  // Solo mode: no Clerk secret (or explicit bypass) → local guest identity.
+  if (
+    process.env.PREVIEW_BYPASS_AUTH === "true" ||
+    !process.env.CLERK_SECRET_KEY ||
+    process.env.CLERK_SECRET_KEY.includes("dummy") ||
+    process.env.CLERK_SECRET_KEY.includes("preview")
+  ) {
+    return "preview_user_001"
+  }
   try {
     const { auth } = await import("@clerk/nextjs/server");
     const { userId } = await auth();

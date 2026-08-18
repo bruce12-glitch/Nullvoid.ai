@@ -53,3 +53,33 @@ export async function GET(
     headers: { "Content-Type": "text/markdown; charset=utf-8" },
   })
 }
+
+/**
+ * DELETE /api/projects/[projectId]/specs/[specId] — remove a spec (owner only).
+ */
+export async function DELETE(
+  _request: NextRequest,
+  ctx: { params: Promise<{ projectId: string; specId: string }> }
+) {
+  const identity = await getCurrentProjectIdentity()
+  if (!identity.userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+  const { projectId, specId } = await ctx.params
+
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { ownerId: true },
+  })
+  if (!project) return Response.json({ error: "Not found" }, { status: 404 })
+  if (project.ownerId !== identity.userId) {
+    return Response.json({ error: "Only the project owner can delete specs" }, { status: 403 })
+  }
+
+  try {
+    const deleted = await prisma.projectSpec.deleteMany({ where: { id: specId, projectId } })
+    if (deleted.count === 0) return Response.json({ error: "Not found" }, { status: 404 })
+    return new Response(null, { status: 204 })
+  } catch {
+    return Response.json({ error: "Failed to delete spec" }, { status: 500 })
+  }
+}

@@ -27,7 +27,8 @@ export async function POST(req: Request) {
 
   const secret = process.env.CLERK_WEBHOOK_SECRET
   if (!secret) {
-    return new Response("Missing CLERK_WEBHOOK_SECRET", { status: 500 })
+    // Webhooks are only relevant in FULL mode with Clerk configured.
+    return new Response("Webhook not configured", { status: 503 })
   }
 
   const payload = await req.text()

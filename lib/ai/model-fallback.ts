@@ -9,13 +9,23 @@
 export function geminiModelCandidates(): string[] {
   const candidates = [
     process.env.GEMINI_MODEL,
-    "gemini-flash-latest",
+    // 3.6-flash has proven the most reliable under load; the -latest alias
+    // (currently 3.7) is frequently load-shed with 503s.
     "gemini-3.6-flash",
+    "gemini-flash-latest",
     "gemini-3.1-flash-lite",
     "gemini-2.5-flash-lite",
     "gemini-2.5-flash",
   ].filter((m): m is string => Boolean(m))
   return [...new Set(candidates)]
+}
+
+/** True when the error is a capacity/quota problem — retrying the SAME model is pointless. */
+export function isOverloadedError(error: unknown): boolean {
+  const status = (error as { statusCode?: number })?.statusCode
+  if (status === 503 || status === 429) return true
+  const msg = (error as Error)?.message ?? ""
+  return /high demand|overloaded|UNAVAILABLE|quota|RESOURCE_EXHAUSTED|no longer available/i.test(msg)
 }
 
 /**

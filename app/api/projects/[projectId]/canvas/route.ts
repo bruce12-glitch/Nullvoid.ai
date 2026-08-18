@@ -101,6 +101,10 @@ export async function PUT(
       const edges = Array.isArray(b.edges) ? b.edges : undefined
       if (nodes !== undefined || edges !== undefined) {
         const payload = JSON.stringify({ nodes: nodes ?? [], edges: edges ?? [] })
+        // Guard against runaway canvas payloads (2 MB serialized).
+        if (payload.length > 2_000_000) {
+          return Response.json({ error: "Canvas is too large to save (2 MB limit)" }, { status: 413 })
+        }
         if (hasBlob()) {
           try {
             const blob = await put(

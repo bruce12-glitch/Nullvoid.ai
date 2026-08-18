@@ -20,6 +20,10 @@ Update this file whenever the current phase, active feature, or implementation s
 - Fixed broken vitest setup (jsdom v30 incompatible with Node 20) — 6/6 unit tests pass.
 - Observed: free-tier Gemini quota for gemini-3.6-flash can be exhausted under heavy use; the model fallback chain degrades gracefully to alternate models.
 
+### Phase 5 addendum — Full AI E2E in browser + model cooldown memory
+- `lib/ai/model-fallback.ts`: cooldown registry — models failing with 429 (quota) are skipped for 30 min, 503 (overload) for 2 min, so requests stop burning 10-20s re-probing dead models. Added lite models (3.1/3.5-flash-lite) to the chain: separate quota pools keep AI alive when flash quota is exhausted.
+- **Full AI flow certified in a real browser**: prompt typed → Send → 5 nodes + 4 edges placed on canvas (~25s) → Ghost AI chat reply → autosave persisted to DB → Ctrl+Z undo works → 0 client errors. Screenshot-verified. QA script: `scripts/qa/ai-e2e.mjs`.
+
 ## Phase 4 — Backend Deep Audit & Hardening (2026-08-18)
 
 ### Contract bugs fixed (features that were silently broken)

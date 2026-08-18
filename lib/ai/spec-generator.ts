@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { CanvasExportSchema, SystemSpecSchema } from "@/lib/validations/canvas";
 import { getGeminiClient } from "./gemini-client";
-import { geminiModelCandidates, isOverloadedError } from "./model-fallback";
+import { geminiModelCandidates, isOverloadedError, reportModelFailure } from "./model-fallback";
 import { SYSTEM_ARCHITECT_PROMPT } from "./prompts/system-architect";
 
 // Combine both schemas into a single expected AI payload
@@ -130,6 +130,7 @@ export async function generateArchitectureSpec(
         return validated;
       } catch (error) {
         if (isOverloadedError(error)) {
+          reportModelFailure(model, error);
           console.warn(`[gemini] model ${model} overloaded — moving to next candidate`);
           break; // capacity issue: next model immediately, no backoff
         }

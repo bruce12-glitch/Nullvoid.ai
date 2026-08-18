@@ -3,8 +3,15 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import { hasClerk, hasLiveblocks, hasTrigger, hasBlob, hasGemini } from "@/lib/runtime";
 
+function hasLiveblocksPublic(): boolean {
+  return Boolean(process.env.NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY?.startsWith("pk_"));
+}
+
 async function checkLiveblocks(): Promise<string> {
-  if (!hasLiveblocks()) return "solo mode (no key)";
+  if (!hasLiveblocks()) {
+    if (hasLiveblocksPublic()) return "public-key mode (realtime collab active)";
+    return "solo mode (no key)";
+  }
   try {
     const res = await fetch("https://api.liveblocks.io/v1/rooms?limit=1", {
       headers: { Authorization: `Bearer ${process.env.LIVEBLOCKS_SECRET_KEY}` },
@@ -56,7 +63,7 @@ export async function GET() {
   return NextResponse.json(
     {
       status: allHealthy ? "healthy" : "degraded",
-      mode: hasClerk() && hasLiveblocks() ? "full" : "solo",
+      mode: hasClerk() && (hasLiveblocks() || hasLiveblocksPublic()) ? "full" : "solo",
       timestamp: new Date().toISOString(),
       services,
     },

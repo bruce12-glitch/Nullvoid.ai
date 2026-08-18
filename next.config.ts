@@ -10,7 +10,18 @@ const nextConfig: NextConfig = {
   env: {
     // Build-time service flags: client bundles switch between FULL mode
     // (Liveblocks/Clerk/Trigger.dev) and SOLO mode (local fallbacks).
-    NEXT_PUBLIC_COLLAB_ENABLED: process.env.LIVEBLOCKS_SECRET_KEY?.startsWith("sk_") ? "true" : "false",
+    // Liveblocks supports two auth modes: "secret" (server auth endpoint,
+    // per-room permissions) or "public" (client connects with pk_ key).
+    NEXT_PUBLIC_COLLAB_ENABLED:
+      process.env.LIVEBLOCKS_SECRET_KEY?.startsWith("sk_") ||
+      process.env.NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY?.startsWith("pk_")
+        ? "true"
+        : "false",
+    NEXT_PUBLIC_LB_AUTH_MODE: process.env.LIVEBLOCKS_SECRET_KEY?.startsWith("sk_")
+      ? "secret"
+      : process.env.NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY?.startsWith("pk_")
+        ? "public"
+        : "off",
     NEXT_PUBLIC_AUTH_ENABLED: process.env.CLERK_SECRET_KEY?.startsWith("sk_") ? "true" : "false",
     NEXT_PUBLIC_TRIGGER_ENABLED:
       process.env.TRIGGER_SECRET_KEY && process.env.LIVEBLOCKS_SECRET_KEY?.startsWith("sk_") ? "true" : "false",

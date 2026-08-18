@@ -21,9 +21,11 @@ import {
   useCreateFeedMessage,
   useSelf,
   useStorage,
+  useMutation,
   COLLAB_ENABLED,
 } from "@/lib/collab/react"
 import { soloSetCanvas, soloBroadcast } from "@/lib/collab/solo"
+import { LiveObject } from "@liveblocks/client"
 import { useRealtimeRun } from "@trigger.dev/react-hooks"
 import { AiStatusFeedMessageSchema, ChatFeedMessageSchema } from "@/types/tasks"
 import { cn } from "@/lib/utils"
@@ -147,6 +149,36 @@ export function AiSidebar({ isOpen, onClose, roomId, projectId }: AiSidebarProps
   const createFeedMessage = useCreateFeedMessage()
   const { messages: feedMessages } = useFeedMessages(FEED_ID)
   const { messages: chatFeedMessages } = useFeedMessages(CHAT_FEED_ID)
+
+  // Replace the whole canvas with an AI-generated design. Works in both
+  // modes: real Liveblocks CRDT mutation in collab mode, local store in solo.
+  const applyCanvasMutation = useMutation(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ({ storage }, nextNodes: any[], nextEdges: any[]) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const nodesMap = storage.get("nodes") as any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const edgesMap = storage.get("edges") as any
+      if (!nodesMap || !edgesMap) return
+
+      const nextNodeIds = new Set(nextNodes.map((n) => n.id))
+      const nextEdgeIds = new Set(nextEdges.map((e) => e.id))
+      const staleNodes: string[] = []
+      const staleEdges: string[] = []
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      nodesMap.forEach((_v: any, k: string) => { if (!nextNodeIds.has(k)) staleNodes.push(k) })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      edgesMap.forEach((_v: any, k: string) => { if (!nextEdgeIds.has(k)) staleEdges.push(k) })
+      staleNodes.forEach((k) => nodesMap.delete(k))
+      staleEdges.forEach((k) => edgesMap.delete(k))
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const n of nextNodes) nodesMap.set(n.id, new LiveObject(n as any))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const e of nextEdges) edgesMap.set(e.id, new LiveObject(e as any))
+    },
+    []
+  )
 
   // Ensure both feeds exist on mount
   useEffect(() => {
@@ -345,12 +377,18 @@ export function AiSidebar({ isOpen, onClose, roomId, projectId }: AiSidebarProps
         edges?: unknown[]
       }
 
-      // Inline (SOLO) mode: the design was generated in the request itself.
+      // Inline (SOLO / public-collab) mode: design generated in the request itself.
       if (designData.inline) {
-        if (!COLLAB_ENABLED && designData.nodes && designData.edges) {
-          // Apply the new canvas state to the local solo store.
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          soloSetCanvas(designData.nodes as any[], designData.edges as any[])
+        if (designData.nodes && designData.edges) {
+          if (COLLAB_ENABLED) {
+            // Shared room: apply via CRDT so every collaborator sees it.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            applyCanvasMutation(designData.nodes as any[], designData.edges as any[])
+          } else {
+            // Solo: apply to the local store.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            soloSetCanvas(designData.nodes as any[], designData.edges as any[])
+          }
         }
 
         const summary = designData.summary ?? "Design applied to canvas."
@@ -400,7 +438,7 @@ export function AiSidebar({ isOpen, onClose, roomId, projectId }: AiSidebarProps
       setStatusText("")
       updateMyPresence({ thinking: false })
     }
-  }, [input, isLoading, roomId, projectId, updateMyPresence, createFeedMessage, self, nodesArray, edgesArray])
+  }, [input, isLoading, roomId, projectId, updateMyPresence, createFeedMessage, self, nodesArray, edgesArray, applyCanvasMutation])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

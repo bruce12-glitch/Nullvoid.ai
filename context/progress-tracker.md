@@ -4,11 +4,24 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Phase 5: Real-Browser QA & Hydration Fixes — COMPLETED (2026-08-18)
+- Phase 6: FULL MODE (Clerk auth + Liveblocks multiplayer) — CERTIFIED (2026-08-18)
 
 ## Current Goal
 
 🚀 Market-ready. App is fully functional in SOLO mode (no external accounts) and upgrades automatically to FULL mode when service keys are configured.
+
+## Phase 6 — FULL MODE: Real Auth + Realtime Multiplayer CERTIFIED (2026-08-18)
+
+- Clerk secret key configured → real authentication active: unauth users 307-redirect to /sign-in, APIs protected, landing public. Clerk routing env vars keep auth on in-app pages.
+- Liveblocks **public-key mode** implemented (NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY): CollabProvider connects with publicApiKey when no secret key exists; NEXT_PUBLIC_LB_AUTH_MODE switches secret/public/off.
+- AI inline results now apply via facade useMutation (CRDT in collab mode, solo store otherwise) so every collaborator sees Ghost AI's output.
+- iterative-generator (chat-modify) wired to the model-fallback chain + cooldown registry (was crashing on quota-dead pinned model). GEMINI_MODEL unpinned.
+- Demo projects reassigned to the real Clerk owner account.
+- **Multiplayer certified with two real authenticated browsers** (scripts/qa/multiplayer-e2e.mjs): Clerk ticket sign-in for owner + teammate, collaborator invite (201), both loaded the same room (7 nodes each), owner dropped a shape → appeared on teammate's screen (7→8 both) — REALTIME SYNC VERIFIED. Screenshot: teammate's Shared tab + synced canvas + Liveblocks badge.
+- All 7+ commits pushed to GitHub main.
+
+### Security note
+- Keys were shared in chat during setup — rotate the GitHub PAT and consider rotating Clerk/Liveblocks keys after launch. Swap the Liveblocks pk for the sk_prod secret key to get per-room permission enforcement (public-key mode allows any signed-in visitor with the app URL to join rooms).
 
 ## Phase 5 — Real-Browser QA & Frontend Hydration Fixes (2026-08-18)
 

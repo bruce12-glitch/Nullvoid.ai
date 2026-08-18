@@ -1,4 +1,5 @@
-import { getGeminiClient, getDefaultModel } from "@/lib/ai/gemini-client";
+import { getGeminiClient } from "@/lib/ai/gemini-client";
+import { geminiModelCandidates, isOverloadedError, reportModelFailure } from "@/lib/ai/model-fallback";
 import { ITERATIVE_ARCHITECT_PROMPT } from "@/lib/ai/prompts/iterative-architect";
 import { DeltaPatchResponseSchema, type DeltaPatchResponse } from "@/lib/ai/canvas-differ";
 import type { CanvasNode, CanvasEdge } from "@/types/canvas";
@@ -37,27 +38,40 @@ export async function generateDeltaPatches(
 CURRENT CANVAS STATE:
 ${canvasContext}`;
 
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const response = await client.models.generateContent({
-        model: getDefaultModel("flash"),
-        contents: [{ role: "user", parts: [{ text: fullPrompt }] }],
-        config: {
-          systemInstruction: ITERATIVE_ARCHITECT_PROMPT,
-          responseMimeType: "application/json",
-        },
-      });
+  // Model-candidate chain with cooldown awareness; within a model, retry
+  // only transient errors (capacity failures skip to the next model).
+  const models = geminiModelCandidates();
+  let lastError: unknown;
+  for (const model of models) {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const response = await client.models.generateContent({
+          model,
+          contents: [{ role: "user", parts: [{ text: fullPrompt }] }],
+          config: {
+            systemInstruction: ITERATIVE_ARCHITECT_PROMPT,
+            responseMimeType: "application/json",
+          },
+        });
 
-      const text = response.text;
-      if (!text) throw new Error("Empty response from Gemini");
+        const text = response.text;
+        if (!text) throw new Error("Empty response from Gemini");
 
-      const parsed = JSON.parse(text);
-      return DeltaPatchResponseSchema.parse(parsed);
-    } catch (error) {
-      if (attempt === retries) throw error;
-      await new Promise((res) => setTimeout(res, Math.pow(2, attempt) * 1000));
+        const parsed = JSON.parse(text);
+        return DeltaPatchResponseSchema.parse(parsed);
+      } catch (error) {
+        lastError = error;
+        if (isOverloadedError(error)) {
+          reportModelFailure(model, error);
+          console.warn(`[gemini] model ${model} overloaded — next candidate`);
+          break;
+        }
+        if (attempt === retries) break;
+        await new Promise((res) => setTimeout(res, Math.pow(2, attempt) * 1000));
+      }
     }
   }
+  throw lastError;
 
   throw new Error("Failed to generate delta patches");
 }

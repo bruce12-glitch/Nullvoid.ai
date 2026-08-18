@@ -36,7 +36,13 @@ So "the missing codes" are **not** missing ghost-ai files. They are
 - `npx next build` → all modules compile; only fails fetching Google Fonts
   (sandbox network restriction, **not** a code defect)
 - Broken-import scan across 203 files → 1 unresolved specifier (§3.1)
-- Runtime proof of the Liveblocks bugs via Node against the real SDK (§3.2)
+- Runtime proof of the Liveblocks bugs via Node against the real SDK, plus
+  inspection of the **compiled** `@liveblocks/react-flow@3.23.0` implementation
+  (`dist/lib/flow.js`, `dist/lib/shared.js`) — not merely its `.d.ts` docs
+
+All findings were re-verified in a second pass. That pass **overturned one
+claim** about `useLiveblocksCanvasSync.ts` throwing at runtime; the correction
+is recorded inline in §3.2. Every other finding reproduced unchanged.
 
 ---
 
@@ -65,32 +71,51 @@ has stayed hidden — it masks all 9 errors at build time.
 
 ### 3.2 — CRITICAL: Liveblocks storage-key mismatch (silent data loss)
 
-Two incompatible storage schemas coexist in one room. **This is the single most
-important defect in the repo** and is invisible at compile time.
+Two incompatible storage schemas coexist in the **same room**. This is the most
+important defect in the repo and is invisible at compile time.
 
-`components/editor/canvas/canvas-editor.tsx:62` drives the 2D canvas with:
+Verified against the installed runtime (`@liveblocks/react-flow@3.23.0`), not
+just the typings — `dist/lib/shared.js:3`:
 
-```ts
-useLiveblocksFlow<CanvasNode, CanvasEdge>({ suspense: true })
+```js
+const DEFAULT_STORAGE_KEY = "flow";
 ```
 
-Per `@liveblocks/react-flow` typings, `storageKey` **defaults to `"flow"`** —
-so nodes/edges live at `root.flow.nodes` / `root.flow.edges`.
+and `dist/lib/flow.js:137`: `storageKey: options.storageKey ?? DEFAULT_STORAGE_KEY`.
 
-But `liveblocks.config.ts` declares `Storage` as flat `root.nodes` /
-`root.edges`, and consumers read from there. ghost-ai declares it correctly as
-`flow: LiveObject<{ nodes, edges }>`.
+`canvas-editor.tsx:62` calls `useLiveblocksFlow({ suspense: true })` and
+**never passes `storageKey`** (grep confirms the option appears nowhere in the
+repo). So React Flow reads and writes `root.flow.nodes` / `root.flow.edges`.
 
-Consequences — three concrete breakages:
+Crucially, the hook **auto-creates** that subtree — `flow.js:228` runs
+`setInitialStorage()` on mount, which does
+`storage.set("flow", new LiveObject({ nodes, edges }))` when `root.flow` is
+absent. Meanwhile `editor-workspace-client.tsx:52` seeds `initialStorage` with
+flat `{ nodes, edges, systemMetadata }`.
+
+**Net result: the 2D room ends up with BOTH.** `root.flow.*` holds the live
+diagram; `root.nodes` / `root.edges` remain permanently empty orphans. The
+mismatch is therefore not a crash — it is a silent split-brain:
 
 | Site | Code | Effect |
 |---|---|---|
-| `canvas-node.tsx:122,128` | `storage.get("nodes")?.get(id)` | `undefined` → `?.` swallows it → **renaming / recoloring a node silently does nothing** |
+| `canvas-node.tsx:122,128` | `storage.get("nodes")?.get(id)` | hits the **empty orphan** map → `get(id)` returns `undefined` → `?.`/guard swallows it → **renaming / recoloring a node silently does nothing** |
 | `canvas-edge.tsx:31` | `storage.get("edges")?.get(id)` | same → **edge label edits silently dropped** |
-| `hooks/useLiveblocksCanvasSync.ts:46,52,62,119` | `storage.get("nodes").set(...)` | no `?.` → **throws at runtime** on the 3D canvas path |
 
-ghost-ai uses `storage.get("flow").get("nodes").get(id)` at the exact same
-lines — the fork flattened the path but never updated the writers.
+ghost-ai avoids this on both sides: it seeds
+`initialStorage={new LiveObject({ flow: new LiveObject({ nodes, edges }) })}`
+and its writers use `storage.get("flow").get("nodes").get(id)`. The fork
+flattened the schema but never updated the writers.
+
+**Correction to an earlier draft of this audit:** the writers in
+`hooks/useLiveblocksCanvasSync.ts` (lines 46/52/62/119) use unguarded
+`storage.get("nodes").set(...)`, which I initially reported as throwing at
+runtime. That is **wrong**. Those hooks are used only by the 3D canvas
+(`/canvas/[id]`), which never calls `useLiveblocksFlow`; its `initialStorage`
+does define flat `nodes`/`edges`, so `storage.get("nodes")` resolves to a real
+LiveMap and does not throw. The 3D path is self-consistent. The defect is
+confined to the 2D path — which is the more damaging outcome, since a crash
+would at least be visible.
 
 ### 3.3 — CRITICAL: `useStorage` LiveMap read returns `[]` always
 
@@ -109,6 +134,14 @@ Verified against the real SDK:
 nullvoid  Array.from(x.values?.() ?? [])  =>  []            ← always empty
 ghost     Object.values(x)                =>  [{"id":"a"}]  ← correct
 ```
+
+Independent corroboration: the Liveblocks library itself uses exactly the
+`Object.values(...)` form internally for this data
+(`@liveblocks/react-flow/dist/lib/flow.js:110-117`, `nodeMapToList`).
+
+Note this bug is **compounded by §3.2** — `ai-sidebar.tsx` reads `root.nodes`,
+which in a 2D room is the empty orphan map anyway. Both bugs must be fixed for
+spec generation to see real data.
 
 The `as any` cast is what suppresses the type error. Net effect: **AI spec
 generation always posts an empty canvas** (`nodes: []`, `edges: []`) to
@@ -149,6 +182,11 @@ room-id space. A room created by one is unreadable by the other. `types/canvas.t
 papers over this with compatibility unions (`"canvasNode"` alongside `SERVICE`,
 `DATABASE`, …) rather than a single model. Pick one persistence shape.
 
+Both routes also declare the *same* flat `initialStorage`, so the two stacks
+additionally disagree with the `root.flow` layout that §3.2 shows React Flow
+actually creates. Resolving §3.2 and §3.5 together is advisable — a single
+storage schema fixes both.
+
 ### 3.6 — LOW: dead code, hygiene, env drift
 
 - **9 orphaned modules** never imported: `ClientProviders.tsx` (which wires
@@ -179,8 +217,9 @@ papers over this with compatibility unions (`"canvasNode"` alongside `SERVICE`,
 ## 4. Priority
 
 1. **§3.1** `prisma generate` (unblocks typecheck) + drop `ignoreBuildErrors`
-2. **§3.2** unify the storage key on `"flow"` (or pass `storageKey`) — restores
-   node/edge editing, stops the 3D-path runtime throw
+2. **§3.2** unify on the `"flow"` schema — update `liveblocks.config.ts`,
+   the two `initialStorage` seeds, and the `canvas-node`/`canvas-edge` writers
+   (or pass an explicit `storageKey`) — restores node/edge editing
 3. **§3.3** `Object.values(...)` in `ai-sidebar.tsx` — restores AI spec accuracy
 4. **§3.4** mount `ClerkProvider`; make bypass opt-in and dev-only
 5. **§3.5** choose one canvas persistence model

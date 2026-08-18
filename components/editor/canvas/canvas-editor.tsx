@@ -194,7 +194,7 @@ export function CanvasEditor({ projectId, pendingTemplate, onTemplateImported, o
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault()
-    event.dataTransfer.dropEffect = "copy"
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "copy"
   }, [])
 
   const onDrop = useCallback(

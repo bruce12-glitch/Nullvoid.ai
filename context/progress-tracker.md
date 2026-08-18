@@ -24,6 +24,14 @@ Update this file whenever the current phase, active feature, or implementation s
 - `lib/ai/model-fallback.ts`: cooldown registry — models failing with 429 (quota) are skipped for 30 min, 503 (overload) for 2 min, so requests stop burning 10-20s re-probing dead models. Added lite models (3.1/3.5-flash-lite) to the chain: separate quota pools keep AI alive when flash quota is exhausted.
 - **Full AI flow certified in a real browser**: prompt typed → Send → 5 nodes + 4 edges placed on canvas (~25s) → Ghost AI chat reply → autosave persisted to DB → Ctrl+Z undo works → 0 client errors. Screenshot-verified. QA script: `scripts/qa/ai-e2e.mjs`.
 
+### Phase 5 addendum 2 — Deep interaction QA (scripts/qa/deep-interaction.mjs)
+All editor interactions certified in real Chromium against the production build:
+- Node label inline edit (double-click → contenteditable → commit) — exercises the solo mock-CRDT nested path writes ✓
+- Drag-drop shape from panel onto canvas (5 → 6 nodes) ✓
+- Share dialog opens ✓ · Templates modal opens + import replaces canvas ✓
+- Spec generation via UI Specs tab → appears in list ✓
+- Defensive guard added: onDragOver null-checks dataTransfer.
+
 ## Phase 4 — Backend Deep Audit & Hardening (2026-08-18)
 
 ### Contract bugs fixed (features that were silently broken)

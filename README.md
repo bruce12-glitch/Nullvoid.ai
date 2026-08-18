@@ -1,99 +1,104 @@
-# NullVoid AI 
+# NullVoid AI
 
-NullVoid AI is a real-time collaborative 3D & 2D system design workspace. Users describe a system in plain English, and an AI agent maps that system onto a shared interactive canvas live. Collaborators can refine the architecture together, and the application generates a comprehensive Markdown technical specification document from the resulting graph. 
+**AI-powered collaborative system design workspace.** Describe an architecture in plain English — an AI agent draws it as an interactive diagram on a real-time multiplayer canvas, and exports a complete Markdown technical specification.
 
-This project was built utilizing a "spec-driven agentic development" methodology, combining human architectural design with AI coding agents executing precise implementation units.
+![Editor with AI-generated architecture](docs/screenshots/editor-with-nodes.png)
 
-## ⚡ Two Runtime Modes
+## 🔗 Live Demo
 
-NullVoid degrades gracefully based on which services you configure:
+> **[nullvoid-ai.vercel.app](#deployment)** — *(deploy in ~15 min, see [Deployment](#deployment))*
+>
+> Or run locally in solo mode with just two things: a Postgres database and a free [Gemini API key](https://aistudio.google.com/apikey).
 
-| Capability | SOLO mode (no keys) | FULL mode (all keys) |
-|---|---|---|
-| Authentication | Local guest identity | Clerk accounts |
-| Canvas editing | ✅ Local state + DB autosave | ✅ Liveblocks CRDT multiplayer |
-| AI architecture generation | ✅ Inline in the API route | ✅ Trigger.dev background jobs |
-| AI spec generation | ✅ Inline + stored in PostgreSQL | ✅ Background + Vercel Blob |
-| Live cursors / presence | — | ✅ |
+## How to Use
 
-**Only two things are strictly required: a PostgreSQL database and a Google Gemini API key.** Everything else upgrades automatically when its key appears in `.env` (service detection lives in `lib/runtime.ts`, the client facade in `lib/collab/`).
+1. **Sign in** (Clerk) or continue as guest in solo mode
+2. **Create a project** from the dashboard
+3. Open the editor and **type a prompt** in the AI sidebar — e.g. *"Design a scalable e-commerce backend with payments and a message queue"*
+4. Watch the AI place **nodes and edges on the canvas** (~20–30s)
+5. Refine by hand: drag-drop shapes, connect edges, rename inline, undo/redo
+6. **Share** → invite teammates by email → they edit the same canvas live (cursors + presence)
+7. **Specs tab → Generate** → preview and **download a Markdown tech spec** built from your diagram
 
+| Multiplayer (teammate's view) | 3D canvas (60 FPS WebGL) |
+|---|---|
+| ![Multiplayer](docs/screenshots/multiplayer-B.png) | ![3D canvas](docs/screenshots/canvas-3d.png) |
 
-## 🛠 Tech Stack
+## Features
 
-* **Frontend:** Next.js 16, React 19, Tailwind CSS v4, and shadcn/ui.
-* **3D Rendering & WebGPU:** Three.js, React Three Fiber (`@react-three/fiber`), and `@react-three/drei`.
-* **Authentication & User Management:** Clerk.
-* **Multiplayer & Canvas:** Liveblocks and React Flow (`@xyflow/react`).
-* **Database:** PostgreSQL managed via Prisma ORM.
-* **Storage:** Vercel Blob (for canvas snapshots and Markdown specs).
-* **Background Tasks & AI Agents:** Trigger.dev.
-* **AI Integration:** Vercel AI SDK and Google Gemini (`gemini-2.0-flash`).
+- **AI architecture generation** — Gemini tool-calling agent places typed, colored, positioned nodes/edges
+- **Real-time collaboration** — Liveblocks CRDT rooms: live cursors, presence, simultaneous editing
+- **2D + 3D canvases** — React Flow editor and a Three.js/WebGPU scene with LOD and instancing
+- **Spec generation** — one-click Markdown technical specification from the live canvas graph
+- **Iterative AI chat** — delta-patch modifications ("add a Redis cache to the product service")
+- **Project management** — auth, ownership, email-invited collaborators, starter templates, autosave
 
-## ✨ Key Features
+## Engineering Highlights
 
-* **Real-Time Collaborative Workspace:** Multiple users can connect to a shared room via WebSockets to edit the same canvas. The environment features live presence, avatars, and synced cursors.
-* **Interactive 3D & 2D Architecture Canvas:** Supports WebGPU hardware acceleration with automatic WebGL2 fallback for rendering interactive 3D system nodes and 2D canvas layouts.
-* **AI Architecture Generation:** Describe a system (e.g., "design an e-commerce backend"), and a Trigger.dev background task will generate the required nodes, edges, and architecture layout on the canvas in real-time.
-* **Automated Tech Specs:** The app takes the active canvas state and chat history, synthesizes it, and generates a downloadable Markdown technical specification.
-* **Rich Node Interaction:** Users can drag-and-drop shapes, resize elements while maintaining aspect ratios, edit labels inline, change background/text colors via a floating toolbar, and connect custom edges from any side.
-* **Project Management & Access Control:** Secure routes ensure only authorized users can enter a workspace. Owners can invite collaborators via email, and non-owners are restricted from destructive actions like renaming or deleting projects.
-* **Starter Templates:** Users can import pre-built architecture diagrams—such as microservices, CI/CD pipelines, or event-driven systems—to kickstart their design.
-* **Autosave:** Canvas states automatically persist as JSON data inside Vercel Blob storage, keeping your database lean.
+The parts I'd want a code reviewer to look at:
 
-## 🧠 Spec-Driven Context System
+- **Dual-mode runtime** (`lib/runtime.ts`, `lib/collab/`) — every external service degrades gracefully. No Liveblocks key? A local store with identical hook semantics (mock CRDT, undo history, feeds) takes over. No Trigger.dev? AI jobs execute inline in the API route. No Blob storage? Canvases/specs persist to Postgres. Add keys → features upgrade automatically, zero code changes.
+- **LLM resilience** (`lib/ai/model-fallback.ts`) — model candidate chain with cooldown memory: quota-exhausted models (429) are skipped for 30 min, overloaded ones (503) for 2 min, so requests fail over in milliseconds instead of retrying dead models.
+- **Defense in depth** — per-user sliding-window rate limits on all AI routes, input size caps, 2 MB canvas payload limit, room↔project authorization binding, Zod-validated AI outputs with lenient normalization.
+- **Tested like production** (`scripts/qa/`) — Playwright suites run against the production build: page/console-error sweeps, drag-drop, inline label editing, template import, full AI-prompt→canvas E2E, and a **two-authenticated-browser multiplayer test** that verifies a shape dropped by one user appears on the other's screen.
 
-NullVoid AI is designed to be built and maintained by AI coding agents using a 6-file context system located in the `/context` folder:
+## Tech Stack
 
-1. **`project_overview.md`**: Outlines the product goals, target audience, core user flows, and deliberately out-of-scope features.
-2. **`architecture-context.md`**: Defines the tech stack, 3D/2D rendering layer boundaries, and invariants the codebase must never break.
-3. **`code-standards.md`**: Enforces strict styling, Next.js, and TypeScript conventions.
-4. **`ai-workflow-rules.md`**: Keeps the agent disciplined, dictating that it must work on one feature unit or subsystem at a time.
-5. **`ui-context.md`**: Holds the design tokens and component rules to ensure the UI remains visually coherent across agent sessions.
-6. **`progress-tracker.md`**: The agent's memory bank, constantly updated with the current phase, completed work, and architectural decisions made along the way.
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router, Turbopack), React 19, TypeScript |
+| UI | Tailwind CSS v4, shadcn/ui, React Flow (@xyflow/react), Three.js / React Three Fiber |
+| AI | Google Gemini via Vercel AI SDK (multi-step tool calling) + @google/genai |
+| Realtime | Liveblocks (CRDT storage, presence, feeds) |
+| Auth | Clerk |
+| Data | PostgreSQL + Prisma 7 (driver adapters), Vercel Blob (optional) |
+| Jobs | Trigger.dev (optional — inline fallback built in) |
+| Quality | GitHub Actions CI (typecheck → lint → tests → build), Vitest, Playwright |
 
-## 🚀 Getting Started
+## Getting Started
 
-### Quick start (SOLO mode)
 ```bash
-bash scripts/dev-setup.sh   # provisions local PostgreSQL + migrations + deps
-cp .env.example .env        # add DATABASE_URL and GOOGLE_GENERATIVE_AI_API_KEY
+git clone https://github.com/bruce12-glitch/nullvoid.AI.git
+cd nullvoid.AI
+bash scripts/dev-setup.sh      # local Postgres + deps + migrations
+cp .env.example .env           # set DATABASE_URL + GOOGLE_GENERATIVE_AI_API_KEY
 npm run dev
 ```
 
-### 1. Install Dependencies
+That's a fully working solo-mode app. For accounts + multiplayer, also set the Clerk and Liveblocks keys in `.env` (all documented in [`.env.example`](.env.example)).
+
 ```bash
-npm install
+npm run test:unit   # vitest
+npm run lint        # eslint (0 errors)
+npm run build       # production build
+node scripts/qa/browser-qa.mjs   # headless-browser page sweep (needs: npx playwright install chromium)
 ```
 
-### 2. Set Up Environment Variables
-Create an `.env` file in the root directory (refer to `.env.example`).
+## Deployment
 
-**Required:**
-* **Prisma / PostgreSQL:** `DATABASE_URL`
-* **Google AI Studio:** `GOOGLE_GENERATIVE_AI_API_KEY`
+1. **Database** — create a free Postgres at [neon.tech](https://neon.tech), run `npx prisma migrate deploy`
+2. **Vercel** — import this repo, paste your `.env` values as Environment Variables, deploy
+3. CI already gates `main`: every push runs typecheck → lint → unit tests → build
 
-**Optional (enables FULL mode):**
-* **Clerk:** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`
-* **Liveblocks:** `LIVEBLOCKS_SECRET_KEY`
-* **Vercel Blob:** `BLOB_READ_WRITE_TOKEN`
-* **Trigger.dev:** `TRIGGER_SECRET_KEY`
+## Project Structure
 
-### 3. Database Initialization
-Generate the Prisma client and push your schema to the database:
-```bash
-npx prisma generate
-npx prisma migrate dev
+```
+app/            routes + API (projects, canvas, specs, 5 AI endpoints, auth, health)
+components/     canvas (3D), editor (2D + AI sidebar), dashboard, ui
+lib/ai/         design engine, spec engine, model fallback, delta patcher
+lib/collab/     Liveblocks facade + solo-mode engine (the dual-mode core)
+lib/            runtime detection, rate limiting, db, auth-ui facade
+prisma/         schema + migrations
+scripts/qa/     Playwright E2E suites (pages, interactions, AI flow, multiplayer)
+trigger/        background job definitions (optional path)
 ```
 
-### 4. Run the Development Server
-Start the Next.js frontend:
-```bash
-npm run dev
-```
+## Known Limitations
 
-### 5. Run the Trigger.dev Worker
-In a separate terminal tab, start the local worker to process background AI tasks:
-```bash
-npx trigger.dev@latest dev
-```
+- Gemini free tier: 20 requests/day/model — the fallback chain stretches this, but sustained team usage needs a paid key
+- Liveblocks public-key mode (default config) trades per-room permission enforcement for zero-setup collab; supply `LIVEBLOCKS_SECRET_KEY` to enable server-signed room access
+- In-memory rate limiting is per-instance; swap for Redis when scaling horizontally
+
+---
+
+Built on the [ghost-ai](https://github.com/adrianhajdin/ghost-ai) architecture, substantially extended: dual-mode runtime, inline AI execution, 3D pipeline repair, LLM failover, hardened API layer, and a browser-level QA harness.

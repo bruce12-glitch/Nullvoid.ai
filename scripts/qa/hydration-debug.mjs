@@ -1,0 +1,11 @@
+import { chromium } from "@playwright/test";
+const browser = await chromium.launch();
+const page = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+const logs = [];
+page.on("console", (m) => logs.push(`[${m.type()}] ${m.text()}`));
+page.on("pageerror", (e) => logs.push(`[PAGEERROR] ${e.message}`));
+await page.goto("http://localhost:3001/dashboard", { waitUntil: "networkidle", timeout: 120000 });
+await page.waitForTimeout(5000);
+const interesting = logs.filter((l) => /hydrat|418|mismatch|did not match|error/i.test(l));
+console.log(interesting.slice(0, 10).join("\n---\n").slice(0, 4000) || "NO HYDRATION ERRORS IN DEV");
+await browser.close();

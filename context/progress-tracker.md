@@ -4,11 +4,21 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Phase 4: Backend Deep Audit & Hardening — COMPLETED (2026-08-18)
+- Phase 5: Real-Browser QA & Hydration Fixes — COMPLETED (2026-08-18)
 
 ## Current Goal
 
 🚀 Market-ready. App is fully functional in SOLO mode (no external accounts) and upgrades automatically to FULL mode when service keys are configured.
+
+## Phase 5 — Real-Browser QA & Frontend Hydration Fixes (2026-08-18)
+
+- Installed headless Chromium (Playwright); QA scripts live in `scripts/qa/`.
+- **All 6 pages verified with ZERO client-side errors** (landing, dashboard, editor home, 2D editor, 3D canvas, sign-in).
+- 3D canvas confirmed rendering at 60 FPS (WebGL, grid, HUD, toolbox) in a real browser.
+- Interaction QA: New Project modal opens, project-card dropdown opens, AI prompt textarea typeable, saved canvas renders in React Flow (2 nodes + 1 labelled edge, screenshot-verified).
+- **Fixed React #418 hydration crash on /dashboard** — root cause: `DropdownMenuTrigger` wrapped a `<Button>`, producing invalid `<button>`-in-`<button>` HTML; now merged via Base UI `render` prop. Also replaced `lazy()+Suspense` around the three.js RobotShowcase3D with `next/dynamic ssr:false`, and locale-dependent `toLocaleDateString()` with a deterministic formatter.
+- Fixed broken vitest setup (jsdom v30 incompatible with Node 20) — 6/6 unit tests pass.
+- Observed: free-tier Gemini quota for gemini-3.6-flash can be exhausted under heavy use; the model fallback chain degrades gracefully to alternate models.
 
 ## Phase 4 — Backend Deep Audit & Hardening (2026-08-18)
 

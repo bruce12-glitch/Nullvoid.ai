@@ -8,6 +8,15 @@ import { EmptyProjects } from "@/components/dashboard/EmptyProjects";
 import { CreateProjectModal } from "@/components/dashboard/CreateProjectModal";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** Deterministic date format — identical on server and client (avoids hydration mismatch). */
+function formatDateStable(value: string | Date): string {
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "";
+  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+}
+
 type ProjectType = {
   id: string;
   name: string;
@@ -90,7 +99,7 @@ export function DashboardClient({ initialProjects }: DashboardClientProps) {
                   id={project.id}
                   title={project.name}
                   description={project.description || ""}
-                  updatedAt={new Date(project.updatedAt).toLocaleDateString()}
+                  updatedAt={formatDateStable(project.updatedAt)}
                 />
               </div>
             ))}

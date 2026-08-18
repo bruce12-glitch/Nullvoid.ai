@@ -110,11 +110,13 @@ export function ProjectCard({ id, title, description, updatedAt }: ProjectCardPr
           </div>
           
           <DropdownMenu>
-            <DropdownMenuTrigger>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0">
-                <MoreVertical className="h-4 w-4" />
-                <span className="sr-only">Open menu</span>
-              </Button>
+            <DropdownMenuTrigger
+              render={
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0" />
+              }
+            >
+              <MoreVertical className="h-4 w-4" />
+              <span className="sr-only">Open menu</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48 bg-card/80 backdrop-blur-xl border-border/40">
               <DropdownMenuItem className="cursor-pointer" onClick={() => window.location.href = `/canvas/${id}`}>

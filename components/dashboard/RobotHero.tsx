@@ -1,10 +1,22 @@
 "use client";
 
-import { Suspense, lazy } from "react";
+import dynamic from "next/dynamic";
 import { Sparkles, MousePointerClick, ShieldCheck } from "lucide-react";
 
-const RobotShowcase3D = lazy(() =>
-  import("./RobotShowcase3D").then((m) => ({ default: m.RobotShowcase3D }))
+function RobotLoading() {
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="w-12 h-12 border-2 border-accent-primary/20 border-t-accent-primary rounded-full animate-spin" />
+      <span className="text-xs text-muted-foreground">Booting robot...</span>
+    </div>
+  );
+}
+
+// Client-only: three.js must never render during SSR (lazy()+Suspense here
+// caused React #418 hydration mismatches on the dashboard).
+const RobotShowcase3D = dynamic(
+  () => import("./RobotShowcase3D").then((m) => ({ default: m.RobotShowcase3D })),
+  { ssr: false, loading: RobotLoading }
 );
 
 export function RobotHero() {
@@ -50,16 +62,7 @@ export function RobotHero() {
         {/* 3D robot showcase */}
         <div className="relative h-56 sm:h-72 lg:h-[340px] min-h-[220px]">
           <div className="absolute inset-0 flex items-center justify-center">
-            <Suspense
-              fallback={
-                <div className="flex flex-col items-center gap-3">
-                  <div className="w-12 h-12 border-2 border-accent-primary/20 border-t-accent-primary rounded-full animate-spin" />
-                  <span className="text-xs text-muted-foreground">Booting robot...</span>
-                </div>
-              }
-            >
-              <RobotShowcase3D />
-            </Suspense>
+            <RobotShowcase3D />
           </div>
         </div>
       </div>

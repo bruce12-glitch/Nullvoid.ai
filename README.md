@@ -101,4 +101,3 @@ trigger/        background job definitions (optional path)
 
 ---
 
-Built on the [ghost-ai](https://github.com/adrianhajdin/ghost-ai) architecture, substantially extended: dual-mode runtime, inline AI execution, 3D pipeline repair, LLM failover, hardened API layer, and a browser-level QA harness.

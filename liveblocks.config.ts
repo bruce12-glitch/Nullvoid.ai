@@ -16,7 +16,7 @@ declare global {
 
     RoomEvent: RoomEvent;
 
-    ThreadMetadata: {};
+    ThreadMetadata: Record<string, never>;
 
     ActivitiesData: {
       "$aiStatusFeed": {
@@ -31,9 +31,9 @@ declare global {
       };
     };
 
-    RoomInfo: {};
+    RoomInfo: Record<string, never>;
 
-    GroupInfo: {};
+    GroupInfo: Record<string, never>;
   }
 }
 

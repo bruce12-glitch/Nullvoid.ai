@@ -55,7 +55,7 @@ export const generateArchitecture = task({
       }
 
       // 3. Invoke Gemini system architect engine
-      let result = await generateArchitectureSpec(payload.prompt, canvasContext);
+      const result = await generateArchitectureSpec(payload.prompt, canvasContext);
 
       // Apply Layout Engine and Collision Avoidance
       result.nodes = await applyLayoutEngine(result.nodes as any, result.edges as any) as any;

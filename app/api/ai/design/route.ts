@@ -26,9 +26,23 @@ export async function POST(request: Request) {
     return Response.json({ error: "Room does not belong to this project" }, { status: 403 })
   }
 
-  verifyTriggerEnv()
+  // Guarded: verifyTriggerEnv() throws when TRIGGER_SECRET_KEY is unset and
+  // tasks.trigger() can fail on a Trigger.dev outage. Unhandled, both produced
+  // an empty 500 with no diagnosable body.
+  try {
+    verifyTriggerEnv()
+  } catch {
+    return Response.json(
+      { error: "Background jobs are not configured. Set TRIGGER_SECRET_KEY." },
+      { status: 503 }
+    )
+  }
 
-  const handle = await tasks.trigger<typeof designAgent>("design-agent", { prompt, roomId, userId: identity.userId })
-
-  return Response.json({ runId: handle.id }, { status: 201 })
+  try {
+    const handle = await tasks.trigger<typeof designAgent>("design-agent", { prompt, roomId, userId: identity.userId })
+    return Response.json({ runId: handle.id }, { status: 201 })
+  } catch (error) {
+    console.error("[ai/design] failed to dispatch design agent:", error)
+    return Response.json({ error: "Failed to start design agent" }, { status: 502 })
+  }
 }

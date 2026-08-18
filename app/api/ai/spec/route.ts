@@ -24,15 +24,26 @@ export async function POST(request: Request) {
     return Response.json({ error: "Not found" }, { status: 404 })
   }
 
-  verifyTriggerEnv()
+  try {
+    verifyTriggerEnv()
+  } catch {
+    return Response.json(
+      { error: "Background jobs are not configured. Set TRIGGER_SECRET_KEY." },
+      { status: 503 }
+    )
+  }
 
-  const handle = await tasks.trigger<typeof generateSpec>("generate-spec", {
-    projectId: project.id,
-    roomId,
-    chatHistory,
-    nodes,
-    edges,
-  })
-
-  return Response.json({ runId: handle.id }, { status: 201 })
+  try {
+    const handle = await tasks.trigger<typeof generateSpec>("generate-spec", {
+      projectId: project.id,
+      roomId,
+      chatHistory,
+      nodes,
+      edges,
+    })
+    return Response.json({ runId: handle.id }, { status: 201 })
+  } catch (error) {
+    console.error("[ai/spec] failed to dispatch spec generation:", error)
+    return Response.json({ error: "Failed to start spec generation" }, { status: 502 })
+  }
 }

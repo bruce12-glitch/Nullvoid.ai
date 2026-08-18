@@ -97,17 +97,31 @@ export async function PUT(
       const nodes = Array.isArray(b.nodes) ? b.nodes : undefined
       const edges = Array.isArray(b.edges) ? b.edges : undefined
       if (nodes !== undefined || edges !== undefined) {
-        const blob = await put(
-          `canvases/${projectId}/${Date.now()}-canvas.json`,
-          JSON.stringify({ nodes: nodes ?? [], edges: edges ?? [] }),
-          {
-            access: "private",
-            contentType: "application/json",
-            addRandomSuffix: false,
-            allowOverwrite: true,
-          }
-        )
-        stored = blob.url
+        try {
+          const blob = await put(
+            `canvases/${projectId}/${Date.now()}-canvas.json`,
+            JSON.stringify({ nodes: nodes ?? [], edges: edges ?? [] }),
+            {
+              access: "private",
+              contentType: "application/json",
+              addRandomSuffix: false,
+              allowOverwrite: true,
+            }
+          )
+          stored = blob.url
+        } catch (error) {
+          // Previously this threw out of the handler, so a missing
+          // BLOB_READ_WRITE_TOKEN (or any blob outage) returned an empty 500
+          // with no body. Autosave then failed with nothing to diagnose.
+          console.error("[canvas] blob upload failed:", error)
+          return Response.json(
+            {
+              error:
+                "Failed to store canvas. Check that BLOB_READ_WRITE_TOKEN is configured.",
+            },
+            { status: 502 }
+          )
+        }
       }
     }
   }

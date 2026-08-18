@@ -2,9 +2,44 @@ import { currentUser } from "@clerk/nextjs/server";
 import { getLiveblocks, getUserColor } from "@/lib/liveblocks";
 import { prisma } from "@/lib/prisma";
 import { isEmailCollaborator } from "@/lib/project-collaborators";
+import { isPreviewAuthBypass } from "@/lib/project-access";
+
+type AuthedUser = {
+  id: string;
+  fullName: string | null;
+  imageUrl: string;
+  primaryEmailAddress: { emailAddress: string } | null;
+};
+
+/**
+ * Resolves the caller, honouring the same preview-bypass rules as the rest of
+ * the app. Calling Clerk's `currentUser()` unconditionally made this route
+ * throw in local preview, which broke realtime collaboration there even
+ * though every other route supported the bypass.
+ */
+async function resolveUser(): Promise<AuthedUser | null> {
+  if (isPreviewAuthBypass()) {
+    return {
+      id: "preview_user_001",
+      fullName: "Preview User",
+      imageUrl: "",
+      primaryEmailAddress: { emailAddress: "preview@nullvoid.ai" },
+    };
+  }
+
+  try {
+    const user = await currentUser();
+    if (!user?.id) return null;
+    return user as unknown as AuthedUser;
+  } catch (error) {
+    // Fail closed: never hand out a Liveblocks session on an auth error.
+    console.error("[liveblocks-auth] identity resolution failed:", error);
+    return null;
+  }
+}
 
 export async function POST(request: Request) {
-  const user = await currentUser();
+  const user = await resolveUser();
 
   if (!user || !user.id) {
     return new Response("Unauthorized", { status: 401 });

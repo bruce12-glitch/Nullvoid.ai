@@ -6,9 +6,11 @@ export default defineConfig({
   // @ts-ignore - plugin-react types might mismatch but it works
   plugins: [react()],
   test: {
-    environment: "jsdom",
+    // Current unit tests are pure logic (validations, cost engine) — run in
+    // the node environment. jsdom v30 requires Node >= 22 (undici
+    // markAsUncloneable) and crashes the worker pool on Node 20.
+    environment: "node",
     globals: true,
-    setupFiles: ["./__tests__/setup.ts"],
     include: ["__tests__/unit/**/*.test.ts", "__tests__/unit/**/*.test.tsx"],
     coverage: {
       provider: "v8",
